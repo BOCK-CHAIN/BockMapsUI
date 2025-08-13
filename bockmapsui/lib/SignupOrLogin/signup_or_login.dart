@@ -1,4 +1,7 @@
+// File: lib/SignupOrLogin.dart
+
 import 'package:flutter/material.dart';
+import '../HomePage/index.dart';
 
 class SignupOrLogin extends StatelessWidget {
   const SignupOrLogin({super.key});
@@ -190,9 +193,9 @@ class LoginBoxState extends State<LoginBox> {
                           ),
                           onPressed: isFormValid
                               ? () {
-                            print("Email: $regEmail");
-                            print("Password: $regPassword");
-                            print("Repeat: $regRepeatPassword");
+                            print("Email: \$regEmail");
+                            print("Password: \$regPassword");
+                            print("Repeat: \$regRepeatPassword");
                             Navigator.of(context).pop();
                           }
                               : null, // disabled until valid
@@ -291,7 +294,11 @@ class LoginBoxState extends State<LoginBox> {
             ),
             ElevatedButton(
               onPressed: () {
-                print("hello");
+                // route to HomePage index.dart
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => HomeIndex()),
+                );
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green[800],
