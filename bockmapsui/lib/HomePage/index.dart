@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import '../SignupOrLogin/signup_or_login.dart';
 
 class HomeIndex extends StatefulWidget {
   const HomeIndex({super.key});
@@ -11,10 +13,11 @@ class _HomeIndexState extends State<HomeIndex> with SingleTickerProviderStateMix
   bool isSearching = false;
   final FocusNode _searchFocusNode = FocusNode();
 
+  final String backendUrl = 'http://10.0.2.2:3000'; // Android emulator
+
   @override
   void initState() {
     super.initState();
-
     _searchFocusNode.addListener(() {
       setState(() {
         isSearching = _searchFocusNode.hasFocus;
@@ -28,14 +31,48 @@ class _HomeIndexState extends State<HomeIndex> with SingleTickerProviderStateMix
     super.dispose();
   }
 
+  Future<void> _logout() async {
+    try {
+      final url = Uri.parse('$backendUrl/api/auth/logout');
+      await http.post(url, headers: {
+        'Content-Type': 'application/json',
+      });
+
+      // Show logout message first
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Successfully logged out'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+
+        // Wait for a short moment so user can see the message
+        await Future.delayed(const Duration(milliseconds: 500));
+
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (_) => const SignupOrLogin()),
+              (route) => false,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Error logging out, please try again'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    // animation parameters
-    final double initialTop = 18.0; // normal top position
+    final double initialTop = 18.0;
     final double searchBarHeight = 48.0;
-    // small drop when searching
     final double slightlyLowerTop = 40.0;
-    // horizontal padding changes to center bar when searching
     final double sidePaddingWhenTop = 12.0;
     final double sidePaddingWhenCentered = 48.0;
 
@@ -45,7 +82,6 @@ class _HomeIndexState extends State<HomeIndex> with SingleTickerProviderStateMix
         body: SafeArea(
           child: Stack(
             children: [
-              // Background / content
               Positioned.fill(
                 child: Column(
                   children: [
@@ -61,8 +97,6 @@ class _HomeIndexState extends State<HomeIndex> with SingleTickerProviderStateMix
                   ],
                 ),
               ),
-
-              // Search + logout row
               AnimatedPositioned(
                 duration: Duration(milliseconds: 420),
                 curve: Curves.easeInOutCubic,
@@ -72,22 +106,23 @@ class _HomeIndexState extends State<HomeIndex> with SingleTickerProviderStateMix
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    // Logout button
                     AnimatedSwitcher(
                       duration: Duration(milliseconds: 280),
                       transitionBuilder: (child, animation) {
                         return FadeTransition(
                           opacity: animation,
-                          child: SizeTransition(sizeFactor: animation, axis: Axis.horizontal, child: child),
+                          child: SizeTransition(
+                            sizeFactor: animation,
+                            axis: Axis.horizontal,
+                            child: child,
+                          ),
                         );
                       },
                       child: isSearching
                           ? const SizedBox.shrink(key: ValueKey('empty'))
                           : InkWell(
                         key: const ValueKey('logout'),
-                        onTap: () {
-                          Navigator.pop(context);
-                        },
+                        onTap: _logout,
                         borderRadius: BorderRadius.circular(30),
                         child: Container(
                           height: 48,
@@ -107,10 +142,7 @@ class _HomeIndexState extends State<HomeIndex> with SingleTickerProviderStateMix
                         ),
                       ),
                     ),
-
                     if (!isSearching) const SizedBox(width: 12),
-
-                    // Search bar
                     Expanded(
                       child: AnimatedContainer(
                         duration: Duration(milliseconds: 420),

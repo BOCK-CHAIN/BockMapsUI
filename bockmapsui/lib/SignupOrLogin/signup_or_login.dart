@@ -1,6 +1,6 @@
-// File: lib/SignupOrLogin.dart
-
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import '../HomePage/index.dart';
 
 class SignupOrLogin extends StatelessWidget {
@@ -14,39 +14,28 @@ class SignupOrLogin extends StatelessWidget {
       appBar: AppBar(
         title: Text(
           'Bock Maps',
-          style: TextStyle(
-            fontSize: 28,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
         backgroundColor: Color(0xFF914294),
       ),
       body: SingleChildScrollView(
+        padding: EdgeInsets.only(bottom: 20),
         child: Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.only(
-                  top: 40, bottom: 20, left: 20, right: 20),
-              child: Image.asset(
-                'assets/images/BockChainLogo.png',
-                width: 200,
-                height: 200,
-              ),
+            SizedBox(height: 40),
+            Image.asset(
+              'assets/images/BockChainLogo.png',
+              width: 200,
+              height: 200,
             ),
-            Padding(
-              padding: EdgeInsets.only(bottom: 20),
-              child: Center(
-                child: Text(
-                  'Welcome to BOCK Maps \n Explore the world right here!',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 25,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
+            SizedBox(height: 20),
+            Text(
+              'Welcome to BOCK Maps \n Explore the world right here!',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 25, fontWeight: FontWeight.w500),
             ),
+            SizedBox(height: 20),
             LoginBox(),
           ],
         ),
@@ -57,9 +46,7 @@ class SignupOrLogin extends StatelessWidget {
 
 class LoginBox extends StatefulWidget {
   @override
-  LoginBoxState createState() {
-    return LoginBoxState();
-  }
+  LoginBoxState createState() => LoginBoxState();
 }
 
 class LoginBoxState extends State<LoginBox> {
@@ -68,6 +55,68 @@ class LoginBoxState extends State<LoginBox> {
   bool isTapped = false;
   bool _obscureTextLogin = true;
 
+  final TextEditingController _loginEmailController = TextEditingController();
+  final TextEditingController _loginPasswordController = TextEditingController();
+
+  final String backendUrl = 'http://10.0.2.2:3000';
+
+  @override
+  void dispose() {
+    _loginEmailController.dispose();
+    _loginPasswordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> loginUser() async {
+    if (email.isEmpty || password.isEmpty) return;
+
+    final url = Uri.parse('$backendUrl/api/auth/login');
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({'email': email, 'password': password}),
+      );
+
+      final data = json.decode(response.body);
+
+      if (response.statusCode == 200) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => HomeIndex()),
+        );
+      } else {
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: Text('Login Failed'),
+            content: Text(data['error'] ?? 'Unknown error'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: Text('OK'),
+              )
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text('Error'),
+          content: Text(e.toString()),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: Text('OK'),
+            )
+          ],
+        ),
+      );
+    }
+  }
+
   void _showRegisterModal() {
     String regEmail = '';
     String regPassword = '';
@@ -75,9 +124,64 @@ class LoginBoxState extends State<LoginBox> {
     bool _localObscureFirst = true;
     bool _localObscureSecond = true;
 
+    Future<void> registerUser() async {
+      if (regEmail.isEmpty || regPassword.isEmpty) return;
+      final url = Uri.parse('$backendUrl/api/auth/register');
+      try {
+        final response = await http.post(
+          url,
+          headers: {'Content-Type': 'application/json'},
+          body: json.encode({'email': regEmail, 'password': regPassword}),
+        );
+
+        final data = json.decode(response.body);
+
+        if (response.statusCode == 201) {
+          Navigator.of(context).pop();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Registration successful! You can login now.')),
+          );
+          setState(() {
+            email = '';
+            password = '';
+            _loginEmailController.clear();
+            _loginPasswordController.clear();
+          });
+        } else {
+          showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: Text('Registration Failed'),
+              content: Text(data['error'] ?? 'Unknown error'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: Text('OK'),
+                )
+              ],
+            ),
+          );
+        }
+      } catch (e) {
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: Text('Error'),
+            content: Text(e.toString()),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: Text('OK'),
+              )
+            ],
+          ),
+        );
+      }
+    }
+
     showDialog(
       context: context,
-      barrierDismissible: false, // prevents closing when tapping outside
+      barrierDismissible: false,
       builder: (context) {
         return Dialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -99,7 +203,6 @@ class LoginBoxState extends State<LoginBox> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Close button (X)
                       Align(
                         alignment: Alignment.topLeft,
                         child: IconButton(
@@ -132,7 +235,6 @@ class LoginBoxState extends State<LoginBox> {
                         obscureText: _localObscureFirst,
                         onChanged: (val) => setState(() {
                           regPassword = val;
-                          // When password changes, clear repeat to force re-entry
                           regRepeatPassword = '';
                         }),
                         decoration: InputDecoration(
@@ -141,7 +243,9 @@ class LoginBoxState extends State<LoginBox> {
                           isDense: true,
                           suffixIcon: IconButton(
                             icon: Icon(
-                              _localObscureFirst ? Icons.visibility_off : Icons.visibility,
+                              _localObscureFirst
+                                  ? Icons.visibility_off
+                                  : Icons.visibility,
                             ),
                             onPressed: () {
                               setState(() {
@@ -153,7 +257,7 @@ class LoginBoxState extends State<LoginBox> {
                       ),
                       SizedBox(height: 12),
                       TextField(
-                        enabled: canEditRepeat, // locked until first password entered
+                        enabled: canEditRepeat,
                         obscureText: _localObscureSecond,
                         onChanged: (val) => setState(() {
                           regRepeatPassword = val;
@@ -162,13 +266,14 @@ class LoginBoxState extends State<LoginBox> {
                           labelText: 'Repeat Password',
                           border: OutlineInputBorder(),
                           isDense: true,
-                          // Show error when mismatch, helper when match
                           errorText: showMismatch ? 'Passwords do not match' : null,
                           helperText: showMatch ? 'Passwords match' : null,
                           helperStyle: TextStyle(color: Colors.green[700]),
                           suffixIcon: IconButton(
                             icon: Icon(
-                              _localObscureSecond ? Icons.visibility_off : Icons.visibility,
+                              _localObscureSecond
+                                  ? Icons.visibility_off
+                                  : Icons.visibility,
                             ),
                             onPressed: canEditRepeat
                                 ? () {
@@ -186,22 +291,17 @@ class LoginBoxState extends State<LoginBox> {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.green[800],
                             foregroundColor: Colors.white,
-                            padding: EdgeInsets.symmetric(horizontal: 50, vertical: 10),
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 50, vertical: 10),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
                           ),
-                          onPressed: isFormValid
-                              ? () {
-                            print("Email: \$regEmail");
-                            print("Password: \$regPassword");
-                            print("Repeat: \$regRepeatPassword");
-                            Navigator.of(context).pop();
-                          }
-                              : null, // disabled until valid
+                          onPressed: isFormValid ? registerUser : null,
                           child: Text(
                             'Register',
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                                fontSize: 18, fontWeight: FontWeight.bold),
                           ),
                         ),
                       ),
@@ -229,133 +329,79 @@ class LoginBoxState extends State<LoginBox> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Padding(
-              padding: EdgeInsets.only(top: 8, left: 8, right: 8),
-              child: Text(
-                'Login',
-                style: TextStyle(
-                  fontSize: 25,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-            Divider(
-              color: Colors.black,
-              thickness: 1,
-              indent: 15,
-              endIndent: 15,
-            ),
+            SizedBox(height: 8),
+            Text('Login',
+                style: TextStyle(fontSize: 25, fontWeight: FontWeight.w500)),
+            Divider(color: Colors.black, thickness: 1, indent: 15, endIndent: 15),
             Padding(
               padding: EdgeInsets.all(8),
-              child: Padding(
-                padding: EdgeInsets.only(left: 5, right: 5),
-                child: TextField(
-                  onChanged: (value) {
-                    setState(() {
-                      email = value;
-                    });
-                  },
-                  decoration: InputDecoration(
+              child: TextField(
+                controller: _loginEmailController,
+                onChanged: (value) => setState(() => email = value),
+                decoration: InputDecoration(
                     labelText: 'Email',
                     border: OutlineInputBorder(),
-                    isDense: true,
-                  ),
-                ),
+                    isDense: true),
               ),
             ),
             Padding(
               padding: EdgeInsets.all(8),
-              child: Padding(
-                padding: EdgeInsets.only(left: 5, right: 5),
-                child: TextField(
-                  obscureText: _obscureTextLogin,
-                  onChanged: (value) {
-                    setState(() {
-                      password = value;
-                    });
-                  },
-                  decoration: InputDecoration(
-                    labelText: 'Password',
-                    border: OutlineInputBorder(),
-                    isDense: true,
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscureTextLogin ? Icons.visibility_off : Icons.visibility,
-                      ),
-                      onPressed: () {
-                        setState(() {
-                          _obscureTextLogin = !_obscureTextLogin;
-                        });
-                      },
-                    ),
+              child: TextField(
+                controller: _loginPasswordController,
+                obscureText: _obscureTextLogin,
+                onChanged: (value) => setState(() => password = value),
+                decoration: InputDecoration(
+                  labelText: 'Password',
+                  border: OutlineInputBorder(),
+                  isDense: true,
+                  suffixIcon: IconButton(
+                    icon: Icon(_obscureTextLogin
+                        ? Icons.visibility_off
+                        : Icons.visibility),
+                    onPressed: () =>
+                        setState(() => _obscureTextLogin = !_obscureTextLogin),
                   ),
                 ),
               ),
             ),
             ElevatedButton(
-              onPressed: () {
-                // route to HomePage index.dart
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => HomeIndex()),
-                );
-              },
+              onPressed: loginUser,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green[800],
                 foregroundColor: Colors.white,
                 padding: EdgeInsets.symmetric(horizontal: 60, vertical: 8),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+                    borderRadius: BorderRadius.circular(12)),
                 elevation: 5,
               ),
-              child: Padding(
-                padding: EdgeInsets.only(left: 45, right: 45),
-                child: Text(
-                  'Login',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
+              child: Text('Login',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             ),
-            Padding(
-              padding: EdgeInsets.all(8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    'Not Registered?',
-                    style: TextStyle(fontSize: 16),
-                  ),
-                  GestureDetector(
-                    onTap: _showRegisterModal,
-                    onTapDown: (tapDownDetails) {
-                      setState(() {
-                        isTapped = true;
-                      });
-                    },
-                    onTapUp: (tapUpDetails) {
-                      setState(() {
-                        isTapped = false;
-                      });
-                    },
-                    child: Padding(
-                      padding: EdgeInsets.only(left: 8),
-                      child: Text(
-                        'Register',
-                        style: TextStyle(
-                          color: isTapped ? Colors.blue.withOpacity(0.5) : Colors.blue,
-                          fontSize: 16,
-                          decoration: TextDecoration.underline,
-                        ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text('Not Registered?', style: TextStyle(fontSize: 16)),
+                GestureDetector(
+                  onTap: _showRegisterModal,
+                  onTapDown: (_) => setState(() => isTapped = true),
+                  onTapUp: (_) => setState(() => isTapped = false),
+                  child: Padding(
+                    padding: EdgeInsets.only(left: 8),
+                    child: Text(
+                      'Register',
+                      style: TextStyle(
+                        color: isTapped
+                            ? Colors.blue.withOpacity(0.5)
+                            : Colors.blue,
+                        fontSize: 16,
+                        decoration: TextDecoration.underline,
                       ),
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
+            SizedBox(height: 8),
           ],
         ),
       ),
