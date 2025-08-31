@@ -63,7 +63,7 @@ class _HomeIndexState extends State<HomeIndex> with SingleTickerProviderStateMix
                 Positioned.fill(
                   child: Column(
                     children: [
-                      const SizedBox(height: 80),
+                      const SizedBox(height: 15),
                       Expanded(
                         child: Center(
                           child: Text(
@@ -78,7 +78,7 @@ class _HomeIndexState extends State<HomeIndex> with SingleTickerProviderStateMix
               Positioned.fill(
                 child: Column(
                   children: [
-                    const SizedBox(height: 120),
+                    const SizedBox(height: 60),
                     Expanded(child: pages[_selectedIndex]),
                   ],
                 ),
@@ -119,6 +119,13 @@ class _HomeIndexState extends State<HomeIndex> with SingleTickerProviderStateMix
                         child: const Icon(Icons.person),
                       ),
                     ),
+                    if (_selectedIndex == 2 || _selectedIndex == 3) ...[
+                      const SizedBox(width: 18),
+                      Text(
+                        _selectedIndex == 2 ? "You" : "Contribute",
+                        style: const TextStyle(fontSize: 22),
+                      ),
+                    ],
                     if (showSearchBar) ...[
                       const SizedBox(width: 12),
                       Expanded(
