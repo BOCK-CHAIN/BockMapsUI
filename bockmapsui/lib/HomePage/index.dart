@@ -63,12 +63,11 @@ class _HomeIndexState extends State<HomeIndex>
           child: Stack(
             children: [
               if (showMapBackground)
-                const Positioned.fill(child: MapBackground()),
-
+              const Positioned.fill(child: MapBackground()),
               Positioned.fill(
                 child: Column(
                   children: [
-                    const SizedBox(height: 120),
+                    const SizedBox(height: 60),
                     Expanded(child: pages[_selectedIndex]),
                   ],
                 ),
@@ -113,6 +112,13 @@ class _HomeIndexState extends State<HomeIndex>
                         child: const Icon(Icons.person),
                       ),
                     ),
+                    if (_selectedIndex == 2 || _selectedIndex == 3) ...[
+                      const SizedBox(width: 18),
+                      Text(
+                        _selectedIndex == 2 ? "You" : "Contribute",
+                        style: const TextStyle(fontSize: 22),
+                      ),
+                    ],
                     if (showSearchBar) ...[
                       const SizedBox(width: 12),
                       Expanded(

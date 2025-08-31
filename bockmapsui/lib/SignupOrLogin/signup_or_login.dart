@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../HomePage/index.dart';
 
 class SignupOrLogin extends StatelessWidget {
@@ -57,8 +58,19 @@ class LoginBoxState extends State<LoginBox> {
 
   final TextEditingController _loginEmailController = TextEditingController();
   final TextEditingController _loginPasswordController = TextEditingController();
+  final String backendUrl = 'http://10.0.2.2:3000';
+  
+  late SharedPreferences prefs;
 
-  final String backendUrl = 'http://0.0.0.0:3000';
+  @override
+  void initState() {
+    super.initState();
+    _initPrefs();
+  }
+
+  Future<void> _initPrefs() async {
+    prefs = await SharedPreferences.getInstance();
+  }
 
   @override
   void dispose() {
@@ -81,6 +93,10 @@ class LoginBoxState extends State<LoginBox> {
       final data = json.decode(response.body);
 
       if (response.statusCode == 200) {
+        final token = data['token'];
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('jwt_token', token);
+
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => HomeIndex()),
@@ -116,6 +132,7 @@ class LoginBoxState extends State<LoginBox> {
       );
     }
   }
+
 
   void _showRegisterModal() {
     String regEmail = '';
