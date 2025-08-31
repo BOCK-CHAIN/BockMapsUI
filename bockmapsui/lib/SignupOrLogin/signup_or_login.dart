@@ -58,8 +58,8 @@ class LoginBoxState extends State<LoginBox> {
 
   final TextEditingController _loginEmailController = TextEditingController();
   final TextEditingController _loginPasswordController = TextEditingController();
-
   final String backendUrl = 'http://10.0.2.2:3000';
+  
   late SharedPreferences prefs;
 
   @override

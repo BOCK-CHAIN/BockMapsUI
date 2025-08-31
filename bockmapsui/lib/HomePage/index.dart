@@ -4,6 +4,8 @@ import './directions/directions.dart' as directions;
 import './explore/explore.dart' as explore;
 import './you/you.dart' as you;
 import '../Profile/profileindex.dart' as account;
+import './map_background/map_background.dart';
+
 
 class HomeIndex extends StatefulWidget {
   const HomeIndex({super.key});
@@ -12,7 +14,8 @@ class HomeIndex extends StatefulWidget {
   State<HomeIndex> createState() => _HomeIndexState();
 }
 
-class _HomeIndexState extends State<HomeIndex> with SingleTickerProviderStateMixin {
+class _HomeIndexState extends State<HomeIndex>
+    with SingleTickerProviderStateMixin {
   bool isSearching = false;
   final FocusNode _searchFocusNode = FocusNode();
 
@@ -60,21 +63,7 @@ class _HomeIndexState extends State<HomeIndex> with SingleTickerProviderStateMix
           child: Stack(
             children: [
               if (showMapBackground)
-                Positioned.fill(
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 15),
-                      Expanded(
-                        child: Center(
-                          child: Text(
-                            'Map always in background',
-                            style: TextStyle(fontSize: 18, color: Colors.grey[700]),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+              const Positioned.fill(child: MapBackground()),
               Positioned.fill(
                 child: Column(
                   children: [
@@ -87,8 +76,12 @@ class _HomeIndexState extends State<HomeIndex> with SingleTickerProviderStateMix
                 duration: const Duration(milliseconds: 420),
                 curve: Curves.easeInOutCubic,
                 top: isSearching ? slightlyLowerTop : initialTop,
-                left: isSearching ? sidePaddingWhenCentered : sidePaddingWhenTop,
-                right: isSearching ? sidePaddingWhenCentered : sidePaddingWhenTop,
+                left: isSearching
+                    ? sidePaddingWhenCentered
+                    : sidePaddingWhenTop,
+                right: isSearching
+                    ? sidePaddingWhenCentered
+                    : sidePaddingWhenTop,
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
@@ -113,7 +106,7 @@ class _HomeIndexState extends State<HomeIndex> with SingleTickerProviderStateMix
                               color: Colors.black.withOpacity(0.05),
                               blurRadius: 4,
                               offset: const Offset(0, 2),
-                            )
+                            ),
                           ],
                         ),
                         child: const Icon(Icons.person),
@@ -136,12 +129,12 @@ class _HomeIndexState extends State<HomeIndex> with SingleTickerProviderStateMix
                           decoration: BoxDecoration(
                             boxShadow: isSearching
                                 ? [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.08),
-                                blurRadius: 10,
-                                offset: const Offset(0, 6),
-                              )
-                            ]
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.08),
+                                      blurRadius: 10,
+                                      offset: const Offset(0, 6),
+                                    ),
+                                  ]
                                 : null,
                           ),
                           child: TextField(
@@ -149,35 +142,44 @@ class _HomeIndexState extends State<HomeIndex> with SingleTickerProviderStateMix
                             textInputAction: TextInputAction.search,
                             decoration: InputDecoration(
                               hintText: 'Search destinations...',
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
                               filled: true,
                               fillColor: Colors.white,
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(30),
-                                borderSide: BorderSide(color: Colors.grey.shade300),
+                                borderSide: BorderSide(
+                                  color: Colors.grey.shade300,
+                                ),
                               ),
                               enabledBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(30),
-                                borderSide: BorderSide(color: Colors.grey.shade300),
+                                borderSide: BorderSide(
+                                  color: Colors.grey.shade300,
+                                ),
                               ),
                               focusedBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(30),
-                                borderSide: BorderSide(color: Theme.of(context).primaryColor),
+                                borderSide: BorderSide(
+                                  color: Theme.of(context).primaryColor,
+                                ),
                               ),
                               prefixIcon: const Icon(Icons.search),
                               suffixIcon: isSearching
                                   ? IconButton(
-                                icon: const Icon(Icons.close),
-                                onPressed: () {
-                                  _searchFocusNode.unfocus();
-                                },
-                              )
+                                      icon: const Icon(Icons.close),
+                                      onPressed: () {
+                                        _searchFocusNode.unfocus();
+                                      },
+                                    )
                                   : null,
                             ),
                           ),
                         ),
                       ),
-                    ]
+                    ],
                   ],
                 ),
               ),
@@ -203,10 +205,7 @@ class _HomeIndexState extends State<HomeIndex> with SingleTickerProviderStateMix
               icon: Icon(Icons.explore),
               label: "Explore",
             ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.person),
-              label: "You",
-            ),
+            BottomNavigationBarItem(icon: Icon(Icons.person), label: "You"),
             BottomNavigationBarItem(
               icon: Icon(Icons.add_box),
               label: "Contribute",
