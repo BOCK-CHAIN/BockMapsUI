@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import './contribute/contribute.dart' as contribute;
 import './directions/directions.dart' as directions;
 import './explore/explore.dart' as explore;
 import './you/you.dart' as you;
 import '../Profile/profileindex.dart' as account;
+import '../SignupOrLogin/signup_or_login.dart' as auth;
 import './map_background/map_background.dart';
 
-
 class HomeIndex extends StatefulWidget {
-  const HomeIndex({super.key});
+  // pass forceGuest: true to force "no token" mode (shows only Directions & Explore)
+  final bool forceGuest;
+  const HomeIndex({super.key, this.forceGuest = false});
 
   @override
   State<HomeIndex> createState() => _HomeIndexState();
@@ -20,14 +23,33 @@ class _HomeIndexState extends State<HomeIndex>
   final FocusNode _searchFocusNode = FocusNode();
 
   int _selectedIndex = 0;
+  bool? _hasToken; // null => still loading
 
   @override
   void initState() {
     super.initState();
+
+    // If widget.forceGuest is true, treat as no token immediately.
+    if (widget.forceGuest) {
+      _hasToken = false;
+    } else {
+      _checkToken();
+    }
+
     _searchFocusNode.addListener(() {
       setState(() {
         isSearching = _searchFocusNode.hasFocus;
       });
+    });
+  }
+
+  Future<void> _checkToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('jwt_token');
+    setState(() {
+      _hasToken = token != null && token.isNotEmpty;
+      // clamp index if needed
+      if (_hasToken == false && _selectedIndex > 1) _selectedIndex = 0;
     });
   }
 
@@ -39,21 +61,35 @@ class _HomeIndexState extends State<HomeIndex>
 
   @override
   Widget build(BuildContext context) {
+    // While loading (only when not forceGuest), show loading to avoid flicker
+    if (_hasToken == null) {
+      return const Scaffold(
+        body: SafeArea(child: Center(child: CircularProgressIndicator())),
+      );
+    }
+
     final double initialTop = 18.0;
     final double searchBarHeight = 48.0;
     final double slightlyLowerTop = 40.0;
     final double sidePaddingWhenTop = 12.0;
     final double sidePaddingWhenCentered = 48.0;
 
-    final bool showSearchBar = _selectedIndex == 0 || _selectedIndex == 1;
-
-    final List<Widget> pages = [
+    final List<Widget> pages = _hasToken!
+        ? [
       directions.DirectionsPage(),
       explore.ExplorePage(),
       you.YouPage(),
       contribute.ContributePage(),
+    ]
+        : [
+      directions.DirectionsPage(),
+      explore.ExplorePage(),
     ];
 
+    // keep selectedIndex valid
+    if (_selectedIndex >= pages.length) _selectedIndex = 0;
+
+    final bool showSearchBar = _selectedIndex == 0 || _selectedIndex == 1;
     final bool showMapBackground = _selectedIndex == 0 || _selectedIndex == 1;
 
     return GestureDetector(
@@ -62,8 +98,7 @@ class _HomeIndexState extends State<HomeIndex>
         body: SafeArea(
           child: Stack(
             children: [
-              if (showMapBackground)
-              const Positioned.fill(child: MapBackground()),
+              if (showMapBackground) const Positioned.fill(child: MapBackground()),
               Positioned.fill(
                 child: Column(
                   children: [
@@ -76,23 +111,29 @@ class _HomeIndexState extends State<HomeIndex>
                 duration: const Duration(milliseconds: 420),
                 curve: Curves.easeInOutCubic,
                 top: isSearching ? slightlyLowerTop : initialTop,
-                left: isSearching
-                    ? sidePaddingWhenCentered
-                    : sidePaddingWhenTop,
-                right: isSearching
-                    ? sidePaddingWhenCentered
-                    : sidePaddingWhenTop,
+                left: isSearching ? sidePaddingWhenCentered : sidePaddingWhenTop,
+                right: isSearching ? sidePaddingWhenCentered : sidePaddingWhenTop,
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     InkWell(
                       onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const account.AccountPage(),
-                          ),
-                        );
+                        // If has token -> account page; otherwise go to signup/login
+                        if (_hasToken == true) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const account.AccountPage(),
+                            ),
+                          );
+                        } else {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const auth.SignupOrLogin(),
+                            ),
+                          );
+                        }
                       },
                       borderRadius: BorderRadius.circular(30),
                       child: Container(
@@ -112,7 +153,7 @@ class _HomeIndexState extends State<HomeIndex>
                         child: const Icon(Icons.person),
                       ),
                     ),
-                    if (_selectedIndex == 2 || _selectedIndex == 3) ...[
+                    if (_hasToken! && (_selectedIndex == 2 || _selectedIndex == 3)) ...[
                       const SizedBox(width: 18),
                       Text(
                         _selectedIndex == 2 ? "You" : "Contribute",
@@ -129,12 +170,12 @@ class _HomeIndexState extends State<HomeIndex>
                           decoration: BoxDecoration(
                             boxShadow: isSearching
                                 ? [
-                                    BoxShadow(
-                                      color: Colors.black.withOpacity(0.08),
-                                      blurRadius: 10,
-                                      offset: const Offset(0, 6),
-                                    ),
-                                  ]
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.08),
+                                blurRadius: 10,
+                                offset: const Offset(0, 6),
+                              ),
+                            ]
                                 : null,
                           ),
                           child: TextField(
@@ -169,11 +210,11 @@ class _HomeIndexState extends State<HomeIndex>
                               prefixIcon: const Icon(Icons.search),
                               suffixIcon: isSearching
                                   ? IconButton(
-                                      icon: const Icon(Icons.close),
-                                      onPressed: () {
-                                        _searchFocusNode.unfocus();
-                                      },
-                                    )
+                                icon: const Icon(Icons.close),
+                                onPressed: () {
+                                  _searchFocusNode.unfocus();
+                                },
+                              )
                                   : null,
                             ),
                           ),
@@ -190,13 +231,16 @@ class _HomeIndexState extends State<HomeIndex>
           type: BottomNavigationBarType.fixed,
           currentIndex: _selectedIndex,
           onTap: (index) {
+            // Prevent selecting unavailable tabs in guest mode
+            if (!_hasToken! && index > 1) return;
             setState(() {
               _selectedIndex = index;
             });
           },
           selectedItemColor: Colors.purple,
           unselectedItemColor: Colors.purple.shade200,
-          items: const [
+          items: _hasToken!
+              ? const [
             BottomNavigationBarItem(
               icon: Icon(Icons.directions),
               label: "Directions",
@@ -209,6 +253,16 @@ class _HomeIndexState extends State<HomeIndex>
             BottomNavigationBarItem(
               icon: Icon(Icons.add_box),
               label: "Contribute",
+            ),
+          ]
+              : const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.directions),
+              label: "Directions",
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.explore),
+              label: "Explore",
             ),
           ],
         ),

@@ -7,7 +7,7 @@ class DirectionsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Text(
-        "Directions Page",
+        "",
         style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
       ),
     );
