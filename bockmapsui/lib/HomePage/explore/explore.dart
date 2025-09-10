@@ -7,7 +7,7 @@ class ExplorePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Text(
-        "Explore Page",
+        "",
         style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
       ),
     );
