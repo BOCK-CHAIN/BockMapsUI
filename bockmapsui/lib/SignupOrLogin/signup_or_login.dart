@@ -59,7 +59,6 @@ class LoginBoxState extends State<LoginBox> {
   final TextEditingController _loginEmailController = TextEditingController();
   final TextEditingController _loginPasswordController = TextEditingController();
   final String backendUrl = 'http://0.0.0.0:3000';
-  
   late SharedPreferences prefs;
 
   @override
@@ -132,7 +131,6 @@ class LoginBoxState extends State<LoginBox> {
       );
     }
   }
-
 
   void _showRegisterModal() {
     String regEmail = '';
@@ -417,6 +415,24 @@ class LoginBoxState extends State<LoginBox> {
                   ),
                 ),
               ],
+            ),
+            SizedBox(height: 16),
+            GestureDetector(
+              onTap: () {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => HomeIndex()),
+                );
+              },
+              child: Text(
+                "Don't want to sign in? View the map now!",
+                style: TextStyle(
+                  color: Color(0xFF914294),
+                  fontSize: 16,
+                  decoration: TextDecoration.underline,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
             ),
             SizedBox(height: 8),
           ],

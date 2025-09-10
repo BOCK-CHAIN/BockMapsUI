@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../SignupOrLogin/signup_or_login.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import './subpages/locationaccess.dart';
+import 'package:permission_handler/permission_handler.dart';
+import './subpages/notifications.dart';
 
 class AccountPage extends StatelessWidget {
   const AccountPage({super.key});
@@ -11,13 +14,19 @@ class AccountPage extends StatelessWidget {
 
   Future<void> _logout(BuildContext context) async {
     try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('jwt_token');
+
       final url = Uri.parse('$backendUrl/api/auth/logout');
       await http.post(
         url,
         headers: {
           'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
         },
       );
+
+      await prefs.remove('jwt_token');
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -47,19 +56,74 @@ class AccountPage extends StatelessWidget {
     }
   }
 
+  Future<bool> _hasToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('jwt_token') != null;
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text("Account"),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () => _logout(context),
-          )
-        ],
-      ),
-      body: const AccountBody(),
+    return FutureBuilder<bool>(
+      future: _hasToken(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        final hasToken = snapshot.data ?? false;
+
+        if (!hasToken) {
+          return Scaffold(
+            appBar: AppBar(title: const Text("Account")),
+            body: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text(
+                    "You need to log in to view this.\nPlease login here.",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.pushAndRemoveUntil(
+                        context,
+                        MaterialPageRoute(builder: (_) => const SignupOrLogin()),
+                            (route) => false,
+                      );
+                    },
+                    child: const Text(
+                        "Go to Login",
+                      style: TextStyle(
+                        color: Color(0xFF914294)
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text("Account"),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.logout),
+                onPressed: () => _logout(context),
+              )
+            ],
+          ),
+          body: const AccountBody(),
+        );
+      },
     );
   }
 }
@@ -75,8 +139,11 @@ class _AccountBodyState extends State<AccountBody> {
   Map<String, dynamic>? user;
   bool isLoading = true;
   final TextEditingController emailController = TextEditingController();
-
   final String backendUrl = 'http://0.0.0.0:3000';
+  final TextEditingController currentPasswordController = TextEditingController();
+  final TextEditingController newPasswordController = TextEditingController();
+  final TextEditingController confirmPasswordController = TextEditingController();
+  String passwordError = '';
 
   @override
   void initState() {
@@ -98,8 +165,6 @@ class _AccountBodyState extends State<AccountBody> {
         },
       );
 
-      debugPrint('Profile response: ${response.body}');
-
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['ok'] == true) {
@@ -116,14 +181,13 @@ class _AccountBodyState extends State<AccountBody> {
         }
       }
     } catch (e) {
-      debugPrint('Error fetching profile $e');
       setState(() {
         isLoading = false;
       });
     }
   }
 
-  bool isValidEmail(String email){
+  bool isValidEmail(String email) {
     final regex = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');
     return regex.hasMatch(email);
   }
@@ -131,85 +195,84 @@ class _AccountBodyState extends State<AccountBody> {
   Future<void> _updateEmail() async {
     final email = emailController.text.trim();
 
-    if(email.isEmpty || !isValidEmail(email)){
+    if (email.isEmpty || !isValidEmail(email)) {
       showDialog(
-          context: context,
-          builder: (context){
-            return AlertDialog(
-              title: const Text("Error"),
-              content: const Text("Email is not valid!"),
-              actions: [
-                TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: const Text("OK")
-                )
-              ],
-            );
-          }
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: const Text("Error"),
+            content: const Text("Email is not valid!"),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text("OK"),
+              )
+            ],
+          );
+        },
       );
-    }
-    else{
-      try{
+    } else {
+      try {
         final prefs = await SharedPreferences.getInstance();
         final token = prefs.getString('jwt_token') ?? '';
 
         final url = Uri.parse('$backendUrl/api/auth/changeEmail');
         final response = await http.put(
-            url,
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer $token'
-            },
-            body: jsonEncode({ 'newEmail': email })
+          url,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token'
+          },
+          body: jsonEncode({'newEmail': email}),
         );
 
-        if(response.statusCode == 200){
+        if (response.statusCode == 200) {
           final data = jsonDecode(response.body);
           showDialog(
-              context: context,
-              builder: (context){
-                return AlertDialog(
-                  title: const Text("Successful"),
-                  content: Text("Email updated to ${data['email']}"),
-                  actions: [
-                    TextButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        child: const Text("OK")
-                    )
-                  ],
-                );
-              }
+            context: context,
+            builder: (context) {
+              return AlertDialog(
+                title: const Text("Successful"),
+                content: Text("Email updated to ${data['email']}"),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text("OK"),
+                  )
+                ],
+              );
+            },
           );
           setState(() {
             user!['email'] = data['email'];
           });
-        }else{
+        } else {
           final data = jsonDecode(response.body);
           showDialog(
-              context: context,
-              builder: (context){
-                return AlertDialog(
-                  title: const Text("Error"),
-                  content: Text(data['message'] ?? "Failed to update email!"),
-                  actions: [
-                    TextButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        child: const Text("OK")
-                    )
-                  ],
-                );
-              }
+            context: context,
+            builder: (context) {
+              return AlertDialog(
+                title: const Text("Error"),
+                content: Text(data['message'] ?? "Failed to update email!"),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text("OK"),
+                  )
+                ],
+              );
+            },
           );
         }
-      }catch(e){
+      } catch (e) {
         showDialog(
-            context: context,
-            builder: (context){
-              return const AlertDialog(
-                title: const Text("Error"),
-                content: Text("Something went wrong!"),
-              );
-            }
+          context: context,
+          builder: (context) {
+            return const AlertDialog(
+              title: Text("Error"),
+              content: Text("Something went wrong!"),
+            );
+          },
         );
       }
     }
@@ -232,53 +295,324 @@ class _AccountBodyState extends State<AccountBody> {
       if (response.statusCode == 200) {
         if (context.mounted) {
           showDialog(
-              context: context,
-              builder: (context) {
-                return AlertDialog(
-                  title: const Text("Account Deleted"),
-                  content: const Text("Your account has been permanently deleted."),
-                  actions: [
-                    TextButton(
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                        Navigator.pushAndRemoveUntil(
-                          context,
-                          MaterialPageRoute(builder: (_) => const SignupOrLogin()),
-                              (route) => false,
-                        );
-                      },
-                      child: const Text("OK"),
-                    ),
-                  ],
-                );
-              });
+            context: context,
+            builder: (context) {
+              return AlertDialog(
+                title: const Text("Account Deleted"),
+                content: const Text("Your account has been permanently deleted."),
+                actions: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      Navigator.pushAndRemoveUntil(
+                        context,
+                        MaterialPageRoute(builder: (_) => const SignupOrLogin()),
+                            (route) => false,
+                      );
+                    },
+                    child: const Text("OK"),
+                  ),
+                ],
+              );
+            },
+          );
         }
       } else {
         final data = jsonDecode(response.body);
         showDialog(
-            context: context,
-            builder: (context) {
-              return AlertDialog(
-                title: const Text("Error"),
-                content: Text(data['message'] ?? "Failed to delete account!"),
-                actions: [
-                  TextButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: const Text("OK"))
-                ],
-              );
-            });
+          context: context,
+          builder: (context) {
+            return AlertDialog(
+              title: const Text("Error"),
+              content: Text(data['message'] ?? "Failed to delete account!"),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text("OK"),
+                )
+              ],
+            );
+          },
+        );
       }
     } catch (e) {
       showDialog(
+        context: context,
+        builder: (context) {
+          return const AlertDialog(
+            title: Text("Error"),
+            content: Text("Something went wrong!"),
+          );
+        },
+      );
+    }
+  }
+
+  Future<void> _changePassword() async {
+    if (currentPasswordController.text == "" ||
+        newPasswordController.text == "" ||
+        confirmPasswordController.text == "") {
+      showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: const Text("Input fields missing!"),
+            content: const Text("Please enter all the fields."),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text("OK"),
+              )
+            ],
+          );
+        },
+      );
+    } else if (newPasswordController.text != confirmPasswordController.text) {
+      showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: const Text("Passwords don't match!"),
+            content: const Text("Please enter the same password."),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text("OK"),
+              )
+            ],
+          );
+        },
+      );
+    } else {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final token = prefs.getString('jwt_token') ?? '';
+
+        final url = Uri.parse('$backendUrl/api/auth/changePassword');
+        final response = await http.put(
+          url,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token'
+          },
+          body: jsonEncode({
+            'oldPassword': currentPasswordController.text,
+            'newPassword': newPasswordController.text
+          }),
+        );
+
+        if (response.statusCode == 200) {
+          if (context.mounted) {
+            Navigator.of(context).pop();
+          }
+
+          currentPasswordController.clear();
+          newPasswordController.clear();
+          confirmPasswordController.clear();
+
+          showDialog(
+            context: context,
+            builder: (context) {
+              return AlertDialog(
+                title: const Text("Password changed successfully!"),
+                content: const Text("Your password is now changed."),
+                actions: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                    child: const Text("OK"),
+                  )
+                ],
+              );
+            },
+          );
+        } else {
+          final data = jsonDecode(response.body);
+          showDialog(
+            context: context,
+            builder: (context) {
+              return AlertDialog(
+                title: const Text("Password change failed!"),
+                content: Text(data['error'] ?? "Failed to update password!"),
+                actions: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                    child: const Text("OK"),
+                  )
+                ],
+              );
+            },
+          );
+        }
+      } catch (e) {
+        showDialog(
           context: context,
           builder: (context) {
             return const AlertDialog(
               title: Text("Error"),
               content: Text("Something went wrong!"),
             );
-          });
+          },
+        );
+      }
     }
+  }
+
+  void _showChangePasswordModal() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.close, color: Colors.black),
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                            currentPasswordController.clear();
+                            newPasswordController.clear();
+                            confirmPasswordController.clear();
+                          },
+                        ),
+                        const Spacer(),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: currentPasswordController,
+                      obscureText: true,
+                      decoration: InputDecoration(
+                        labelText: "Current Password",
+                        hintText: "Enter your current password",
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 12,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    const Divider(),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: newPasswordController,
+                      obscureText: true,
+                      onChanged: (_) {
+                        setModalState(() {
+                          passwordError = confirmPasswordController.text.isNotEmpty &&
+                              confirmPasswordController.text != newPasswordController.text
+                              ? "Passwords don't match"
+                              : '';
+                        });
+                      },
+                      decoration: InputDecoration(
+                        labelText: "New Password",
+                        hintText: "Enter a new password",
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 12,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: confirmPasswordController,
+                      obscureText: true,
+                      onChanged: (_) {
+                        setModalState(() {
+                          if (confirmPasswordController.text.isNotEmpty &&
+                              confirmPasswordController.text == newPasswordController.text) {
+                            passwordError = "match";
+                          } else if (confirmPasswordController.text != newPasswordController.text) {
+                            passwordError = "Passwords don't match";
+                          } else {
+                            passwordError = '';
+                          }
+                        });
+                      },
+                      decoration: InputDecoration(
+                        labelText: "Confirm New Password",
+                        hintText: "Re-enter your new password",
+                        errorText: passwordError == "Passwords don't match" ? passwordError : null,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 12,
+                        ),
+                      ),
+                    ),
+                    if (passwordError == "match") ...[
+                      const SizedBox(height: 6),
+                      const Text(
+                        "Passwords match",
+                        style: TextStyle(
+                          color: Colors.green,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 40,
+                      child: InkWell(
+                        onTap: () {
+                          _changePassword();
+                        },
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(8),
+                            color: const Color(0xFFFFF3E0),
+                            border: Border.all(
+                              width: 2,
+                              color: const Color(0xFF914294),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: const [
+                              Icon(Icons.check, color: Color(0xFF914294)),
+                              SizedBox(width: 6),
+                              Text(
+                                "Confirm Password Change",
+                                style: TextStyle(fontSize: 16),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   @override
@@ -399,7 +733,7 @@ class _AccountBodyState extends State<AccountBody> {
               Expanded(
                 child: InkWell(
                   onTap: () {
-                    print('Tapped!');
+                    _showChangePasswordModal();
                   },
                   child: Container(
                     padding: const EdgeInsets.all(8),
@@ -438,12 +772,26 @@ class _AccountBodyState extends State<AccountBody> {
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
-                      children: const [
+                      children: [
                         Icon(Icons.location_on,
                             size: 20, color: Color(0xFF914294)),
                         SizedBox(width: 8),
-                        Text("Location Access",
-                            style: TextStyle(fontSize: 16)),
+                        Container(
+                          child: InkWell(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) => LocationPage()),
+                              );
+                            },
+                            child: Text(
+                                "Location Access",
+                                style: TextStyle(
+                                  fontSize: 16
+                                ),
+                            ),
+                          ),
+                        )
                       ],
                     ),
                   ),
@@ -457,7 +805,10 @@ class _AccountBodyState extends State<AccountBody> {
               Expanded(
                 child: InkWell(
                   onTap: () {
-                    print('Tapped!');
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => NotificationsPage()),
+                    );
                   },
                   child: Container(
                     padding: const EdgeInsets.all(8),
@@ -508,6 +859,150 @@ class _AccountBodyState extends State<AccountBody> {
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: InkWell(
+                  onTap: () {
+                    print('Tapped!');
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: const Color(0xFF914294),
+                        width: 2,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: const [
+                        Icon(Icons.info,
+                            size: 20, color: Color(0xFF914294)),
+                        SizedBox(width: 8),
+                        Text("App Info", style: TextStyle(fontSize: 16)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: InkWell(
+                  onTap: () {
+                    print('Tapped!');
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: const Color(0xFF914294),
+                        width: 2,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: const [
+                        Icon(Icons.star,
+                            size: 20, color: Color(0xFF914294)),
+                        SizedBox(width: 8),
+                        Text("Rate the App", style: TextStyle(fontSize: 16)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16,),
+          Row(
+            children: [
+              Expanded(
+                child: InkWell(
+                  onTap: () {
+                    print('Tapped!');
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: const Color(0xFF914294),
+                        width: 2,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: const [
+                        Icon(Icons.description,
+                            size: 20, color: Color(0xFF914294)),
+                        SizedBox(width: 8),
+                        Text("Terms of Service", style: TextStyle(fontSize: 16)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: InkWell(
+                  onTap: () {
+                    print('Tapped!');
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: const Color(0xFF914294),
+                        width: 2,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: const [
+                        Icon(Icons.privacy_tip,
+                            size: 20, color: Color(0xFF914294)),
+                        SizedBox(width: 8),
+                        Text("Privacy Policy", style: TextStyle(fontSize: 16)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          InkWell(
+            onTap: () {
+              openAppSettings();
+            },
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: const Color(0xFF914294),
+                  width: 2,
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: const [
+                  Icon(Icons.settings, size: 20, color: Color(0xFF914294)),
+                  SizedBox(width: 8),
+                  Text(
+                    "Open App Settings",
+                    style: TextStyle(fontSize: 18),
+                  ),
+                ],
+              ),
+            ),
           ),
           const SizedBox(height: 16),
           InkWell(
