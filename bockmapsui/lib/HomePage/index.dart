@@ -34,6 +34,9 @@ class _HomeIndexState extends State<HomeIndex> {
   List<LatLng> _routePoints = [];
   bool _showDirectionsPanel = false;
   bool? _hasToken;
+  List<LatLng> _currentRoute = [];
+  Map<String, dynamic>? _currentRouteDetails;
+  bool _showdetailpanel=true;
 
   @override
   void initState() {
@@ -96,7 +99,7 @@ class _HomeIndexState extends State<HomeIndex> {
 
     try {
       final url = Uri.parse(
-        'http://34.47.223.147:8088/search?q=$query&format=json&limit=5',
+        'http://34.93.8.103:8088/search?q=$query&format=json&limit=5',
       );
       final response = await http.get(url);
 
@@ -104,12 +107,14 @@ class _HomeIndexState extends State<HomeIndex> {
         final List data = json.decode(response.body);
         setState(() {
           _searchResults = data
-              .map((e) => {
-            'name': e['display_name'],
-            'lat': double.tryParse(e['lat'].toString()) ?? 0.0,
-            'lon': double.tryParse(e['lon'].toString()) ?? 0.0,
-            'type': e['type'] ?? '',
-          })
+              .map(
+                (e) => {
+                  'name': e['display_name'],
+                  'lat': double.tryParse(e['lat'].toString()) ?? 0.0,
+                  'lon': double.tryParse(e['lon'].toString()) ?? 0.0,
+                  'type': e['type'] ?? '',
+                },
+              )
               .toList();
         });
       }
@@ -142,7 +147,7 @@ class _HomeIndexState extends State<HomeIndex> {
     });
   }
 
-  final String backendUrl = 'http://10.0.2.2:3000';
+  final String backendUrl = 'http://0.0.0.0:3000';
 
   Future<void> _showListsModal() async {
     final prefs = await SharedPreferences.getInstance();
@@ -192,15 +197,22 @@ class _HomeIndexState extends State<HomeIndex> {
                         itemBuilder: (context, index) {
                           final list = lists[index];
                           return ListTile(
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
                             title: Text(
                               list['name'],
                               style: const TextStyle(fontSize: 16),
                             ),
-                            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                            trailing: const Icon(
+                              Icons.arrow_forward_ios,
+                              size: 16,
+                            ),
                             onTap: () async {
                               Navigator.pop(context);
-                              final addressNameController = TextEditingController();
+                              final addressNameController =
+                                  TextEditingController();
                               await showDialog(
                                 context: context,
                                 builder: (context) => AlertDialog(
@@ -218,11 +230,16 @@ class _HomeIndexState extends State<HomeIndex> {
                                     ),
                                     TextButton(
                                       onPressed: () async {
-                                        final addressName = addressNameController.text.trim();
-                                        if (_selectedLocation == null || addressName.isEmpty) return;
+                                        final addressName =
+                                            addressNameController.text.trim();
+                                        if (_selectedLocation == null ||
+                                            addressName.isEmpty)
+                                          return;
 
                                         final addAddressResponse = await http.post(
-                                          Uri.parse('$backendUrl/storedAddress/addresses'),
+                                          Uri.parse(
+                                            '$backendUrl/storedAddress/addresses',
+                                          ),
                                           headers: {
                                             'Authorization': 'Bearer $token',
                                             'Content-Type': 'application/json',
@@ -230,25 +247,48 @@ class _HomeIndexState extends State<HomeIndex> {
                                           body: json.encode({
                                             'list_id': list['id'],
                                             'name': addressName,
-                                            'latitude': _selectedLocation!.latitude,
-                                            'longitude': _selectedLocation!.longitude,
+                                            'latitude':
+                                                _selectedLocation!.latitude,
+                                            'longitude':
+                                                _selectedLocation!.longitude,
                                           }),
                                         );
 
                                         Navigator.pop(context);
 
-                                        if (addAddressResponse.statusCode == 200) {
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            const SnackBar(content: Text('Address saved successfully')),
+                                        if (addAddressResponse.statusCode ==
+                                            200) {
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            const SnackBar(
+                                              content: Text(
+                                                'Address saved successfully',
+                                              ),
+                                            ),
                                           );
-                                        } else if (addAddressResponse.statusCode == 400) {
-                                            final data = json.decode(addAddressResponse.body);
-                                            ScaffoldMessenger.of(context).showSnackBar(
-                                              SnackBar(content: Text(data['message'])),
-                                            );
-                                        } else{
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            const SnackBar(content: Text('Failed to save address')),
+                                        } else if (addAddressResponse
+                                                .statusCode ==
+                                            400) {
+                                          final data = json.decode(
+                                            addAddressResponse.body,
+                                          );
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            SnackBar(
+                                              content: Text(data['message']),
+                                            ),
+                                          );
+                                        } else {
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            const SnackBar(
+                                              content: Text(
+                                                'Failed to save address',
+                                              ),
+                                            ),
                                           );
                                         }
                                       },
@@ -294,22 +334,17 @@ class _HomeIndexState extends State<HomeIndex> {
   @override
   Widget build(BuildContext context) {
     if (_hasToken == null) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     final List<Widget> pages = _hasToken!
         ? [
-      DirectionsPage(),
-      explore.ExplorePage(),
-      you.YouPage(),
-      contribute.ContributePage(),
-    ]
-        : [
-      DirectionsPage(),
-      explore.ExplorePage(),
-    ];
+            DirectionsPage(),
+            explore.ExplorePage(),
+            you.YouPage(),
+            contribute.ContributePage(),
+          ]
+        : [DirectionsPage(), explore.ExplorePage()];
 
     if (_selectedIndex >= pages.length) _selectedIndex = 0;
 
@@ -333,7 +368,8 @@ class _HomeIndexState extends State<HomeIndex> {
                     Positioned.fill(
                       child: MapBackground(
                         targetLocation: _selectedLocation,
-                        routePoints: _routePoints,
+                        routePoints: _currentRoute,
+                        routeDetails: _currentRouteDetails,
                       ),
                     ),
                     if (!_showDirectionsPanel)
@@ -349,14 +385,16 @@ class _HomeIndexState extends State<HomeIndex> {
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (_) => const account.AccountPage(),
+                                      builder: (_) =>
+                                          const account.AccountPage(),
                                     ),
                                   );
                                 } else {
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (_) => const auth.SignupOrLogin(),
+                                      builder: (_) =>
+                                          const auth.SignupOrLogin(),
                                     ),
                                   );
                                 }
@@ -379,11 +417,16 @@ class _HomeIndexState extends State<HomeIndex> {
                                 child: const Icon(Icons.person),
                               ),
                             ),
-                            if (_hasToken! && (_selectedIndex == 2 || _selectedIndex == 3)) ...[
+                            if (_hasToken! &&
+                                (_selectedIndex == 2 ||
+                                    _selectedIndex == 3)) ...[
                               const SizedBox(width: 18),
                               Text(
                                 _selectedIndex == 2 ? "You" : "Contribute",
-                                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w500),
+                                style: const TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
                             ],
                             if (showSearchBar) ...[
@@ -392,18 +435,21 @@ class _HomeIndexState extends State<HomeIndex> {
                                 child: Column(
                                   children: [
                                     AnimatedContainer(
-                                      duration: const Duration(milliseconds: 420),
+                                      duration: const Duration(
+                                        milliseconds: 420,
+                                      ),
                                       curve: Curves.easeInOutCubic,
                                       height: 48,
                                       decoration: BoxDecoration(
                                         boxShadow: _searchFocusNode.hasFocus
                                             ? [
-                                          BoxShadow(
-                                            color: Colors.black.withOpacity(0.08),
-                                            blurRadius: 10,
-                                            offset: const Offset(0, 6),
-                                          ),
-                                        ]
+                                                BoxShadow(
+                                                  color: Colors.black
+                                                      .withOpacity(0.08),
+                                                  blurRadius: 10,
+                                                  offset: const Offset(0, 6),
+                                                ),
+                                              ]
                                             : null,
                                       ),
                                       child: TextField(
@@ -413,25 +459,39 @@ class _HomeIndexState extends State<HomeIndex> {
                                         decoration: InputDecoration(
                                           hintText: 'Search destinations...',
                                           border: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(30),
+                                            borderRadius: BorderRadius.circular(
+                                              30,
+                                            ),
                                             borderSide: BorderSide.none,
                                           ),
                                           filled: true,
                                           fillColor: Colors.white,
-                                          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                                          contentPadding:
+                                              const EdgeInsets.symmetric(
+                                                horizontal: 20,
+                                                vertical: 12,
+                                              ),
                                           suffixIcon: isSearching
                                               ? const Padding(
-                                            padding: EdgeInsets.all(12),
-                                            child: SizedBox(
-                                              width: 20,
-                                              height: 20,
-                                              child: CircularProgressIndicator(strokeWidth: 2),
-                                            ),
-                                          )
+                                                  padding: EdgeInsets.all(12),
+                                                  child: SizedBox(
+                                                    width: 20,
+                                                    height: 20,
+                                                    child:
+                                                        CircularProgressIndicator(
+                                                          strokeWidth: 2,
+                                                        ),
+                                                  ),
+                                                )
                                               : IconButton(
-                                            icon: const Icon(Icons.search),
-                                            onPressed: () => _searchPlaces(_searchController.text),
-                                          ),
+                                                  icon: const Icon(
+                                                    Icons.search,
+                                                  ),
+                                                  onPressed: () =>
+                                                      _searchPlaces(
+                                                        _searchController.text,
+                                                      ),
+                                                ),
                                         ),
                                       ),
                                     ),
@@ -440,10 +500,14 @@ class _HomeIndexState extends State<HomeIndex> {
                                         margin: const EdgeInsets.only(top: 4),
                                         decoration: BoxDecoration(
                                           color: Colors.white,
-                                          borderRadius: BorderRadius.circular(12),
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
                                           boxShadow: [
                                             BoxShadow(
-                                              color: Colors.black.withOpacity(0.1),
+                                              color: Colors.black.withOpacity(
+                                                0.1,
+                                              ),
                                               blurRadius: 10,
                                               offset: const Offset(0, 4),
                                             ),
@@ -457,7 +521,9 @@ class _HomeIndexState extends State<HomeIndex> {
                                                 maxLines: 2,
                                                 overflow: TextOverflow.ellipsis,
                                               ),
-                                              subtitle: place['type'] != '' ? Text(place['type']) : null,
+                                              subtitle: place['type'] != ''
+                                                  ? Text(place['type'])
+                                                  : null,
                                               onTap: () => _selectPlace(place),
                                             );
                                           }).toList(),
@@ -468,11 +534,16 @@ class _HomeIndexState extends State<HomeIndex> {
                               ),
                               const SizedBox(width: 8),
                               ElevatedButton.icon(
-                                onPressed: _selectedPlace != null ? _openDirections : null,
+                                onPressed: _selectedPlace != null
+                                    ? _openDirections
+                                    : null,
                                 icon: const Icon(Icons.directions),
                                 label: const Text("Go"),
                                 style: ElevatedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 12,
+                                  ),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(30),
                                   ),
@@ -482,7 +553,9 @@ class _HomeIndexState extends State<HomeIndex> {
                           ],
                         ),
                       ),
-                    if (_selectedPlace != null && _selectedIndex == 0 && !_showDirectionsPanel)
+                    if (_selectedPlace != null &&
+                        _selectedIndex == 0 &&
+                        !_showDirectionsPanel&&_showdetailpanel)
                       Positioned(
                         left: 0,
                         right: 0,
@@ -531,7 +604,9 @@ class _HomeIndexState extends State<HomeIndex> {
                                       style: ElevatedButton.styleFrom(
                                         minimumSize: const Size.fromHeight(48),
                                         shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(12),
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
                                         ),
                                       ),
                                     ),
@@ -545,7 +620,9 @@ class _HomeIndexState extends State<HomeIndex> {
                                       style: ElevatedButton.styleFrom(
                                         minimumSize: const Size.fromHeight(48),
                                         shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(12),
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
                                         ),
                                       ),
                                     ),
@@ -564,10 +641,11 @@ class _HomeIndexState extends State<HomeIndex> {
                         child: DirectionsPage(
                           initialDestination: _selectedPlace,
                           onClose: _hideDirectionsPanel,
-                          onRouteFound: (points) {
+                          onRouteFound: (points, details) {
                             setState(() {
-                              _routePoints = points;
-                              _hideDirectionsPanel();
+                              _showdetailpanel=false;
+                              _currentRoute = points;
+                              _currentRouteDetails = details;
                             });
                           },
                         ),
@@ -599,33 +677,30 @@ class _HomeIndexState extends State<HomeIndex> {
         unselectedItemColor: Colors.purple.shade200,
         items: _hasToken!
             ? const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.directions),
-            label: "Directions",
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.explore),
-            label: "Explore",
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: "You",
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.add_box),
-            label: "Contribute",
-          ),
-        ]
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.directions),
+                  label: "Directions",
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.explore),
+                  label: "Explore",
+                ),
+                BottomNavigationBarItem(icon: Icon(Icons.person), label: "You"),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.add_box),
+                  label: "Contribute",
+                ),
+              ]
             : const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.directions),
-            label: "Directions",
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.explore),
-            label: "Explore",
-          ),
-        ],
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.directions),
+                  label: "Directions",
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.explore),
+                  label: "Explore",
+                ),
+              ],
       ),
     );
   }

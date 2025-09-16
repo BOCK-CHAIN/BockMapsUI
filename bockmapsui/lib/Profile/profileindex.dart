@@ -10,7 +10,7 @@ import './subpages/notifications.dart';
 class AccountPage extends StatelessWidget {
   const AccountPage({super.key});
 
-  final String backendUrl = 'http://10.0.2.2:3000';
+  final String backendUrl = 'http://0.0.0.0:3000';
 
   Future<void> _logout(BuildContext context) async {
     try {
@@ -139,7 +139,7 @@ class _AccountBodyState extends State<AccountBody> {
   Map<String, dynamic>? user;
   bool isLoading = true;
   final TextEditingController emailController = TextEditingController();
-  final String backendUrl = 'http://10.0.2.2:3000';
+  final String backendUrl = 'http://0.0.0.0:3000';
   final TextEditingController currentPasswordController = TextEditingController();
   final TextEditingController newPasswordController = TextEditingController();
   final TextEditingController confirmPasswordController = TextEditingController();
