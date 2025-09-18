@@ -7,8 +7,8 @@ import 'package:http/http.dart' as http;
 
 class DirectionsPage extends StatefulWidget {
   final Map<String, dynamic>? initialDestination;
-  final Function(List<LatLng>)? onRouteFound;
-  final VoidCallback? onClose; // New callback to close the page
+  final Function(List<LatLng>, Map<String, dynamic>)? onRouteFound;
+  final VoidCallback? onClose;
 
   const DirectionsPage({
     Key? key,
@@ -44,6 +44,7 @@ class _DirectionsPageState extends State<DirectionsPage> {
     }
   }
 
+  /// ---- PICK CURRENT LOCATION ----
   Future<void> _pickCurrentLocationAsStart() async {
     try {
       final svc = await Geolocator.isLocationServiceEnabled();
@@ -70,15 +71,34 @@ class _DirectionsPageState extends State<DirectionsPage> {
       final pos = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
       );
+
+      _startLoc = LatLng(pos.latitude, pos.longitude);
+
+      // ---- Reverse Geocode using your Nominatim server ----
+      final placeName = await _reverseGeocode(_startLoc!);
+
       setState(() {
-        _startLoc = LatLng(pos.latitude, pos.longitude);
-        _startCtrl.text = 'Your location';
+        _startCtrl.text = placeName ?? "Your location";
       });
     } catch (_) {
       _setFallbackLocation();
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  Future<String?> _reverseGeocode(LatLng loc) async {
+    try {
+      final url = Uri.parse(
+        'http://34.93.8.103:8088/reverse?lat=${loc.latitude}&lon=${loc.longitude}&format=json',
+      );
+      final res = await http.get(url);
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        return data['display_name'];
+      }
+    } catch (_) {}
+    return null;
   }
 
   void _setFallbackLocation() {
@@ -95,6 +115,7 @@ class _DirectionsPageState extends State<DirectionsPage> {
     );
   }
 
+  /// ---- FETCH SEARCH SUGGESTIONS ----
   Future<void> _fetchSuggestions({
     required String query,
     required bool isStart,
@@ -114,7 +135,7 @@ class _DirectionsPageState extends State<DirectionsPage> {
     List<Map<String, dynamic>> results = [];
     try {
       final url = Uri.parse(
-        'http://34.47.223.147:8088/search?q=$query&format=json&limit=8',
+        'http://34.93.8.103:8088/search?q=$query&format=json&limit=8',
       );
       final res = await http.get(url);
       if (res.statusCode == 200) {
@@ -160,39 +181,7 @@ class _DirectionsPageState extends State<DirectionsPage> {
     });
   }
 
-  List<LatLng> decodePolyline(String encodedString) {
-    var lat = 0;
-    var lng = 0;
-    var index = 0;
-    var points = <LatLng>[];
-
-    while (index < encodedString.length) {
-      var b;
-      var shift = 0;
-      var result = 0;
-      do {
-        b = encodedString.codeUnitAt(index++) - 63;
-        result |= (b & 0x1f) << shift;
-        shift += 5;
-      } while (b >= 0x20);
-      var dlat = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
-      lat += dlat;
-
-      shift = 0;
-      result = 0;
-      do {
-        b = encodedString.codeUnitAt(index++) - 63;
-        result |= (b & 0x1f) << shift;
-        shift += 5;
-      } while (b >= 0x20);
-      var dlng = ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
-      lng += dlng;
-
-      points.add(LatLng(lat / 1E5, lng / 1E5));
-    }
-    return points;
-  }
-
+  /// ---- FETCH ROUTE FROM OSRM ----
   Future<void> _fetchRoute() async {
     if (_startLoc == null || _destLoc == null) {
       return;
@@ -201,7 +190,7 @@ class _DirectionsPageState extends State<DirectionsPage> {
     setState(() => _busy = true);
     try {
       final osrmUrl = Uri.parse(
-        'http://34.47.223.147:5000/route/v1/driving/'
+        'http://34.93.8.103:5000/route/v1/driving/'
         '${_startLoc!.longitude},${_startLoc!.latitude};'
         '${_destLoc!.longitude},${_destLoc!.latitude}'
         '?overview=full',
@@ -211,18 +200,20 @@ class _DirectionsPageState extends State<DirectionsPage> {
       if (response.statusCode == 200) {
         final json = jsonDecode(response.body);
         final encodedPolyline = json['routes'][0]['geometry'];
-        print(encodedPolyline);
+
         PolylinePoints polylinePoints = PolylinePoints();
         List<PointLatLng> decodedPoints = polylinePoints.decodePolyline(
           encodedPolyline,
         );
-        final routePoints = decodedPoints.map((point) {
-          return LatLng(point.latitude, point.longitude);
-        }).toList();
+        final routePoints = decodedPoints
+            .map((point) => LatLng(point.latitude, point.longitude))
+            .toList();
 
         if (mounted) {
-          widget.onRouteFound?.call(routePoints);
-          widget.onClose?.call(); // Call the onClose callback
+          if (mounted) {
+            widget.onRouteFound?.call(routePoints, json['routes'][0]);
+            widget.onClose?.call();
+          }
         }
       }
     } catch (e) {
@@ -246,7 +237,7 @@ class _DirectionsPageState extends State<DirectionsPage> {
   Widget build(BuildContext context) {
     final inputBorder = OutlineInputBorder(
       borderRadius: BorderRadius.circular(10),
-      borderSide: BorderSide.none, // Make border transparent
+      borderSide: BorderSide.none,
     );
 
     return Card(
@@ -260,7 +251,7 @@ class _DirectionsPageState extends State<DirectionsPage> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Drag handle and close button
+            // Header
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -283,150 +274,133 @@ class _DirectionsPageState extends State<DirectionsPage> {
               ],
             ),
 
-            // START and DESTINATION inputs
-            // START and DESTINATION inputs
-            Card(
-              elevation: 2,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                child: Column(
-                  children: [
-                    // Start point input
-                    Row(
-                      children: [
-                        Icon(Icons.trip_origin, color: Colors.blue[600]),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Column(
-                            children: [
-                              TextField(
-                                controller: _startCtrl,
-                                decoration: InputDecoration(
-                                  labelText: 'Your location',
-                                  hintText: 'Search for a starting point',
-                                  border: inputBorder,
-                                  filled: true,
-                                  fillColor: Colors.grey[100],
-                                ),
-                                onChanged: (value) => _fetchSuggestions(
-                                  query: value,
-                                  isStart: true,
-                                ),
-                              ),
-                              if (_startSuggestions.isNotEmpty)
-                                Container(
-                                  constraints: const BoxConstraints(
-                                    maxHeight: 150,
-                                  ),
-                                  margin: const EdgeInsets.only(top: 4),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    border: Border.all(
-                                      color: Colors.grey.shade300,
-                                    ),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: ListView.builder(
-                                    shrinkWrap: true,
-                                    itemCount: _startSuggestions.length,
-                                    itemBuilder: (context, index) {
-                                      final place = _startSuggestions[index];
-                                      return ListTile(
-                                        leading: const Icon(Icons.place),
-                                        title: Text(place['name']),
-                                        onTap: () =>
-                                            _selectSuggestion(true, place),
-                                      );
-                                    },
-                                  ),
-                                ),
-                            ],
-                          ),
+            // Start Input
+            Row(
+              children: [
+                Icon(Icons.trip_origin, color: Colors.blue[600]),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    children: [
+                      TextField(
+                        controller: _startCtrl,
+                        decoration: InputDecoration(
+                          labelText: 'Your location',
+                          hintText: 'Search for a starting point',
+                          border: inputBorder,
+                          filled: true,
+                          fillColor: Colors.grey[100],
                         ),
-                        IconButton(
-                          icon: const Icon(Icons.swap_vert),
-                          onPressed: () {
-                            // Swap logic
-                            final tmpText = _startCtrl.text;
-                            final tmpLoc = _startLoc;
+                        onChanged: (value) =>
+                            _fetchSuggestions(query: value, isStart: true),
+                        onTap: () {
+                          // When user taps start field but hasn't typed yet, show "Use my location"
+                          if (_startCtrl.text.isEmpty) {
                             setState(() {
-                              _startCtrl.text = _destCtrl.text;
-                              _startLoc = _destLoc;
-                              _destCtrl.text = tmpText;
-                              _destLoc = tmpLoc;
+                              _startSuggestions = [
+                                {
+                                  "name": "Use current location",
+                                  "lat": null,
+                                  "lon": null,
+                                },
+                              ];
                             });
-                          },
-                        ),
-                      ],
-                    ),
+                          }
+                        },
+                      ),
 
-                    const Divider(height: 16),
+                      if (_startSuggestions.isNotEmpty)
+                        Container(
+                          constraints: const BoxConstraints(maxHeight: 150),
+                          margin: const EdgeInsets.only(top: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            border: Border.all(color: Colors.grey.shade300),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: ListView.builder(
+                            shrinkWrap: true,
+                            itemCount: _startSuggestions.length,
+                            itemBuilder: (context, index) {
+                              final place = _startSuggestions[index];
 
-                    // Destination point input
-                    Row(
-                      children: [
-                        Icon(Icons.location_on, color: Colors.red[600]),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Column(
-                            children: [
-                              TextField(
-                                controller: _destCtrl,
-                                decoration: InputDecoration(
-                                  labelText: 'Destination',
-                                  hintText: 'Search for a destination',
-                                  border: inputBorder,
-                                  filled: true,
-                                  fillColor: Colors.grey[100],
-                                ),
-                                onChanged: (value) => _fetchSuggestions(
-                                  query: value,
-                                  isStart: false,
-                                ),
-                              ),
-                              if (_destSuggestions.isNotEmpty)
-                                Container(
-                                  constraints: const BoxConstraints(
-                                    maxHeight: 150,
+                              // Special handling for "Use current location"
+                              if (place['lat'] == null &&
+                                  place['lon'] == null) {
+                                return ListTile(
+                                  leading: const Icon(
+                                    Icons.my_location,
+                                    color: Colors.blue,
                                   ),
-                                  margin: const EdgeInsets.only(top: 4),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    border: Border.all(
-                                      color: Colors.grey.shade300,
-                                    ),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: ListView.builder(
-                                    shrinkWrap: true,
-                                    itemCount: _destSuggestions.length,
-                                    itemBuilder: (context, index) {
-                                      final place = _destSuggestions[index];
-                                      return ListTile(
-                                        leading: const Icon(Icons.place),
-                                        title: Text(place['name']),
-                                        onTap: () =>
-                                            _selectSuggestion(false, place),
-                                      );
-                                    },
-                                  ),
-                                ),
-                            ],
+                                  title: Text(place['name']),
+                                  onTap: _pickCurrentLocationAsStart,
+                                );
+                              }
+
+                              // Normal search suggestion
+                              return ListTile(
+                                leading: const Icon(Icons.place),
+                                title: Text(place['name']),
+                                onTap: () => _selectSuggestion(true, place),
+                              );
+                            },
                           ),
                         ),
-                      ],
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
+              ],
             ),
-            
+
+            const Divider(height: 16),
+
+            // Destination Input
+            Row(
+              children: [
+                Icon(Icons.location_on, color: Colors.red[600]),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    children: [
+                      TextField(
+                        controller: _destCtrl,
+                        decoration: InputDecoration(
+                          labelText: 'Destination',
+                          hintText: 'Search for a destination',
+                          border: inputBorder,
+                          filled: true,
+                          fillColor: Colors.grey[100],
+                        ),
+                        onChanged: (value) =>
+                            _fetchSuggestions(query: value, isStart: false),
+                      ),
+                      if (_destSuggestions.isNotEmpty)
+                        Container(
+                          constraints: const BoxConstraints(maxHeight: 150),
+                          margin: const EdgeInsets.only(top: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            border: Border.all(color: Colors.grey.shade300),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: ListView.builder(
+                            shrinkWrap: true,
+                            itemCount: _destSuggestions.length,
+                            itemBuilder: (context, index) {
+                              final place = _destSuggestions[index];
+                              return ListTile(
+                                leading: const Icon(Icons.place),
+                                title: Text(place['name']),
+                                onTap: () => _selectSuggestion(false, place),
+                              );
+                            },
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
 
             const SizedBox(height: 20),
             ElevatedButton.icon(

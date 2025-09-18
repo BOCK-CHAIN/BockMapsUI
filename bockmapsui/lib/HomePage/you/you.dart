@@ -14,7 +14,7 @@ class YouPage extends StatefulWidget {
 class _YouPageState extends State<YouPage> {
   bool _loading = true;
   List<Map<String, dynamic>> _userLists = [];
-  final String backendUrl = 'http://10.0.2.2:3000';
+  final String backendUrl = 'http://0.0.0.0:3000';
   final TextEditingController _listNameController = TextEditingController();
 
   @override
