@@ -36,7 +36,8 @@ class _HomeIndexState extends State<HomeIndex> {
   bool? _hasToken;
   List<LatLng> _currentRoute = [];
   Map<String, dynamic>? _currentRouteDetails;
-  bool _showdetailpanel=true;
+  bool _showdetailpanel = true;
+  String _userId = '';
 
   @override
   void initState() {
@@ -48,7 +49,6 @@ class _HomeIndexState extends State<HomeIndex> {
       _checkToken();
     }
 
-    // Handle selected address from You page
     if (widget.selectedAddress != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _setSelectedAddress(widget.selectedAddress!);
@@ -77,7 +77,7 @@ class _HomeIndexState extends State<HomeIndex> {
       };
       _selectedLocation = LatLng(lat, lon);
       _searchController.text = address['name'];
-      _selectedIndex = 0; // Switch to Directions tab
+      _selectedIndex = 0;
     });
   }
 
@@ -109,12 +109,12 @@ class _HomeIndexState extends State<HomeIndex> {
           _searchResults = data
               .map(
                 (e) => {
-                  'name': e['display_name'],
-                  'lat': double.tryParse(e['lat'].toString()) ?? 0.0,
-                  'lon': double.tryParse(e['lon'].toString()) ?? 0.0,
-                  'type': e['type'] ?? '',
-                },
-              )
+              'name': e['display_name'],
+              'lat': double.tryParse(e['lat'].toString()) ?? 0.0,
+              'lon': double.tryParse(e['lon'].toString()) ?? 0.0,
+              'type': e['type'] ?? '',
+            },
+          )
               .toList();
         });
       }
@@ -147,7 +147,7 @@ class _HomeIndexState extends State<HomeIndex> {
     });
   }
 
-  final String backendUrl = 'http://0.0.0.0:3000';
+  final String backendUrl = 'http://10.0.2.2:3000';
 
   Future<void> _showListsModal() async {
     final prefs = await SharedPreferences.getInstance();
@@ -212,7 +212,7 @@ class _HomeIndexState extends State<HomeIndex> {
                             onTap: () async {
                               Navigator.pop(context);
                               final addressNameController =
-                                  TextEditingController();
+                              TextEditingController();
                               await showDialog(
                                 context: context,
                                 builder: (context) => AlertDialog(
@@ -231,10 +231,9 @@ class _HomeIndexState extends State<HomeIndex> {
                                     TextButton(
                                       onPressed: () async {
                                         final addressName =
-                                            addressNameController.text.trim();
+                                        addressNameController.text.trim();
                                         if (_selectedLocation == null ||
-                                            addressName.isEmpty)
-                                          return;
+                                            addressName.isEmpty) return;
 
                                         final addAddressResponse = await http.post(
                                           Uri.parse(
@@ -247,47 +246,30 @@ class _HomeIndexState extends State<HomeIndex> {
                                           body: json.encode({
                                             'list_id': list['id'],
                                             'name': addressName,
-                                            'latitude':
-                                                _selectedLocation!.latitude,
-                                            'longitude':
-                                                _selectedLocation!.longitude,
+                                            'latitude': _selectedLocation!.latitude,
+                                            'longitude': _selectedLocation!.longitude,
                                           }),
                                         );
 
                                         Navigator.pop(context);
 
-                                        if (addAddressResponse.statusCode ==
-                                            200) {
-                                          ScaffoldMessenger.of(
-                                            context,
-                                          ).showSnackBar(
+                                        if (addAddressResponse.statusCode == 200) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
                                             const SnackBar(
-                                              content: Text(
-                                                'Address saved successfully',
-                                              ),
+                                              content: Text('Address saved successfully'),
                                             ),
                                           );
-                                        } else if (addAddressResponse
-                                                .statusCode ==
-                                            400) {
-                                          final data = json.decode(
-                                            addAddressResponse.body,
-                                          );
-                                          ScaffoldMessenger.of(
-                                            context,
-                                          ).showSnackBar(
+                                        } else if (addAddressResponse.statusCode == 400) {
+                                          final data = json.decode(addAddressResponse.body);
+                                          ScaffoldMessenger.of(context).showSnackBar(
                                             SnackBar(
                                               content: Text(data['message']),
                                             ),
                                           );
                                         } else {
-                                          ScaffoldMessenger.of(
-                                            context,
-                                          ).showSnackBar(
+                                          ScaffoldMessenger.of(context).showSnackBar(
                                             const SnackBar(
-                                              content: Text(
-                                                'Failed to save address',
-                                              ),
+                                              content: Text('Failed to save address'),
                                             ),
                                           );
                                         }
@@ -317,8 +299,10 @@ class _HomeIndexState extends State<HomeIndex> {
   Future<void> _checkToken() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('jwt_token');
+    final userId = prefs.getString('user_id') ?? '';
     setState(() {
       _hasToken = token != null && token.isNotEmpty;
+      _userId = userId;
       if (_hasToken == false && _selectedIndex > 1) _selectedIndex = 0;
     });
   }
@@ -339,369 +323,425 @@ class _HomeIndexState extends State<HomeIndex> {
 
     final List<Widget> pages = _hasToken!
         ? [
-            DirectionsPage(),
-            explore.ExplorePage(),
-            you.YouPage(),
-            contribute.ContributePage(),
-          ]
+      DirectionsPage(),
+      explore.ExplorePage(),
+      you.YouPage(),
+      contribute.ContributePage(userId: _userId),
+    ]
         : [DirectionsPage(), explore.ExplorePage()];
 
     if (_selectedIndex >= pages.length) _selectedIndex = 0;
 
     final bool showSearchBar = _selectedIndex == 0 || _selectedIndex == 1;
     final bool showMapBackground = _selectedIndex == 0 || _selectedIndex == 1;
+    final bool isTabletOrAbove = MediaQuery.of(context).size.width >= 600;
+
+    Widget navBar(bool vertical) {
+      List<BottomNavigationBarItem> items = _hasToken!
+          ? const [
+        BottomNavigationBarItem(
+          icon: Icon(Icons.directions),
+          label: "Directions",
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.explore),
+          label: "Explore",
+        ),
+        BottomNavigationBarItem(icon: Icon(Icons.person), label: "You"),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.add_box),
+          label: "Contribute",
+        ),
+      ]
+          : const [
+        BottomNavigationBarItem(
+          icon: Icon(Icons.directions),
+          label: "Directions",
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.explore),
+          label: "Explore",
+        ),
+      ];
+
+      if (vertical) {
+        return Container(
+          width: 80,
+          color: Colors.white,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(items.length, (index) {
+              final item = items[index];
+              final selected = _selectedIndex == index;
+              return IconButton(
+                tooltip: item.label,
+                icon: item.icon,
+                color: selected ? Colors.purple : Colors.purple.shade200,
+                onPressed: () {
+                  if (!_hasToken! && index > 1) return;
+                  setState(() {
+                    _selectedIndex = index;
+                    if (index != 0 && index != 1) {
+                      _searchResults.clear();
+                      _searchController.clear();
+                      _searchFocusNode.unfocus();
+                    }
+                  });
+                },
+              );
+            }),
+          ),
+        );
+      } else {
+        return BottomNavigationBar(
+          type: BottomNavigationBarType.fixed,
+          currentIndex: _selectedIndex,
+          onTap: (index) {
+            if (!_hasToken! && index > 1) return;
+            setState(() {
+              _selectedIndex = index;
+              if (index != 0 && index != 1) {
+                _searchResults.clear();
+                _searchController.clear();
+                _searchFocusNode.unfocus();
+              }
+            });
+          },
+          selectedItemColor: Colors.purple,
+          unselectedItemColor: Colors.purple.shade200,
+          items: items,
+        );
+      }
+    }
 
     return Scaffold(
       body: SafeArea(
-        child: Stack(
-          children: [
-            if (showMapBackground) ...[
-              GestureDetector(
-                onTap: () {
-                  _searchFocusNode.unfocus();
-                  setState(() {
-                    _searchResults.clear();
-                  });
-                },
-                child: Stack(
-                  children: [
-                    Positioned.fill(
-                      child: MapBackground(
-                        targetLocation: _selectedLocation,
-                        routePoints: _currentRoute,
-                        routeDetails: _currentRouteDetails,
+          child: Row(
+              children: [
+              if (isTabletOrAbove) navBar(true),
+      Expanded(
+          child: Stack(
+              children: [
+              if (showMapBackground) ...[
+          GestureDetector(
+          onTap: () {
+    _searchFocusNode.unfocus();
+    setState(() {
+    _searchResults.clear();
+    });
+    },
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: MapBackground(
+              targetLocation: _selectedLocation,
+              routePoints: _currentRoute,
+              routeDetails: _currentRouteDetails,
+            ),
+          ),
+          if (!_showDirectionsPanel)
+            Positioned(
+              top: 15,
+              left: 12,
+              right: 12,
+              child: Row(
+                children: [
+                  InkWell(
+                    onTap: () {
+                      if (_hasToken == true) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) =>
+                            const account.AccountPage(),
+                          ),
+                        );
+                      } else {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) =>
+                            const auth.SignupOrLogin(),
+                          ),
+                        );
+                      }
+                    },
+                    borderRadius: BorderRadius.circular(30),
+                    child: Container(
+                      height: 48,
+                      width: 48,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[200],
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color:
+                            Colors.black.withOpacity(0.05),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: const Icon(Icons.person),
+                    ),
+                  ),
+                  if (_hasToken! &&
+                      (_selectedIndex == 2 ||
+                          _selectedIndex == 3)) ...[
+                    const SizedBox(width: 18),
+                    Text(
+                      _selectedIndex == 2 ? "You" : "Contribute",
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
-                    if (!_showDirectionsPanel)
-                      Positioned(
-                        top: 15,
-                        left: 12,
-                        right: 12,
-                        child: Row(
-                          children: [
-                            InkWell(
-                              onTap: () {
-                                if (_hasToken == true) {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) =>
-                                          const account.AccountPage(),
-                                    ),
-                                  );
-                                } else {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) =>
-                                          const auth.SignupOrLogin(),
-                                    ),
-                                  );
-                                }
-                              },
-                              borderRadius: BorderRadius.circular(30),
-                              child: Container(
-                                height: 48,
-                                width: 48,
-                                decoration: BoxDecoration(
-                                  color: Colors.grey[200],
-                                  shape: BoxShape.circle,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withOpacity(0.05),
-                                      blurRadius: 4,
-                                      offset: const Offset(0, 2),
-                                    ),
-                                  ],
-                                ),
-                                child: const Icon(Icons.person),
-                              ),
+                  ],
+                  if (showSearchBar) ...[
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        children: [
+                          AnimatedContainer(
+                            duration: const Duration(
+                              milliseconds: 420,
                             ),
-                            if (_hasToken! &&
-                                (_selectedIndex == 2 ||
-                                    _selectedIndex == 3)) ...[
-                              const SizedBox(width: 18),
-                              Text(
-                                _selectedIndex == 2 ? "You" : "Contribute",
-                                style: const TextStyle(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.w500,
+                            curve: Curves.easeInOutCubic,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              boxShadow: _searchFocusNode
+                                  .hasFocus
+                                  ? [
+                                BoxShadow(
+                                  color: Colors.black
+                                      .withOpacity(0.08),
+                                  blurRadius: 10,
+                                  offset:
+                                  const Offset(0, 6),
                                 ),
-                              ),
-                            ],
-                            if (showSearchBar) ...[
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  children: [
-                                    AnimatedContainer(
-                                      duration: const Duration(
-                                        milliseconds: 420,
-                                      ),
-                                      curve: Curves.easeInOutCubic,
-                                      height: 48,
-                                      decoration: BoxDecoration(
-                                        boxShadow: _searchFocusNode.hasFocus
-                                            ? [
-                                                BoxShadow(
-                                                  color: Colors.black
-                                                      .withOpacity(0.08),
-                                                  blurRadius: 10,
-                                                  offset: const Offset(0, 6),
-                                                ),
-                                              ]
-                                            : null,
-                                      ),
-                                      child: TextField(
-                                        controller: _searchController,
-                                        focusNode: _searchFocusNode,
-                                        onChanged: _onSearchChanged,
-                                        decoration: InputDecoration(
-                                          hintText: 'Search destinations...',
-                                          border: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              30,
-                                            ),
-                                            borderSide: BorderSide.none,
-                                          ),
-                                          filled: true,
-                                          fillColor: Colors.white,
-                                          contentPadding:
-                                              const EdgeInsets.symmetric(
-                                                horizontal: 20,
-                                                vertical: 12,
-                                              ),
-                                          suffixIcon: isSearching
-                                              ? const Padding(
-                                                  padding: EdgeInsets.all(12),
-                                                  child: SizedBox(
-                                                    width: 20,
-                                                    height: 20,
-                                                    child:
-                                                        CircularProgressIndicator(
-                                                          strokeWidth: 2,
-                                                        ),
-                                                  ),
-                                                )
-                                              : IconButton(
-                                                  icon: const Icon(
-                                                    Icons.search,
-                                                  ),
-                                                  onPressed: () =>
-                                                      _searchPlaces(
-                                                        _searchController.text,
-                                                      ),
-                                                ),
-                                        ),
-                                      ),
+                              ]
+                                  : null,
+                            ),
+                            child: TextField(
+                              controller: _searchController,
+                              focusNode: _searchFocusNode,
+                              onChanged: _onSearchChanged,
+                              decoration: InputDecoration(
+                                hintText:
+                                'Search destinations...',
+                                border: OutlineInputBorder(
+                                  borderRadius:
+                                  BorderRadius.circular(
+                                    30,
+                                  ),
+                                  borderSide: BorderSide.none,
+                                ),
+                                filled: true,
+                                fillColor: Colors.white,
+                                contentPadding:
+                                const EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                  vertical: 12,
+                                ),
+                                suffixIcon: isSearching
+                                    ? const Padding(
+                                  padding:
+                                  EdgeInsets.all(12),
+                                  child: SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child:
+                                    CircularProgressIndicator(
+                                      strokeWidth: 2,
                                     ),
-                                    if (_searchResults.isNotEmpty)
-                                      Container(
-                                        margin: const EdgeInsets.only(top: 4),
-                                        decoration: BoxDecoration(
-                                          color: Colors.white,
-                                          borderRadius: BorderRadius.circular(
-                                            12,
-                                          ),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: Colors.black.withOpacity(
-                                                0.1,
-                                              ),
-                                              blurRadius: 10,
-                                              offset: const Offset(0, 4),
-                                            ),
-                                          ],
-                                        ),
-                                        child: Column(
-                                          children: _searchResults.map((place) {
-                                            return ListTile(
-                                              title: Text(
-                                                place['name'],
-                                                maxLines: 2,
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                              subtitle: place['type'] != ''
-                                                  ? Text(place['type'])
-                                                  : null,
-                                              onTap: () => _selectPlace(place),
-                                            );
-                                          }).toList(),
-                                        ),
+                                  ),
+                                )
+                                    : IconButton(
+                                  icon: const Icon(
+                                    Icons.search,
+                                  ),
+                                  onPressed: () =>
+                                      _searchPlaces(
+                                        _searchController
+                                            .text,
                                       ),
-                                  ],
                                 ),
                               ),
-                              const SizedBox(width: 8),
-                              ElevatedButton.icon(
-                                onPressed: _selectedPlace != null
-                                    ? _openDirections
-                                    : null,
-                                icon: const Icon(Icons.directions),
-                                label: const Text("Go"),
-                                style: ElevatedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 12,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(30),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                    if (_selectedPlace != null &&
-                        _selectedIndex == 0 &&
-                        !_showDirectionsPanel&&_showdetailpanel)
-                      Positioned(
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        child: Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.1),
-                                blurRadius: 10,
-                                offset: const Offset(0, -3),
-                              ),
-                            ],
-                            borderRadius: const BorderRadius.vertical(
-                              top: Radius.circular(16),
                             ),
                           ),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                _selectedPlace!['name'],
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                "Lat: ${_selectedPlace!['lat'].toStringAsFixed(4)}, Lon: ${_selectedPlace!['lon'].toStringAsFixed(4)}",
-                                style: TextStyle(color: Colors.grey[600]),
-                              ),
-                              const SizedBox(height: 12),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: ElevatedButton.icon(
-                                      onPressed: _openDirections,
-                                      icon: const Icon(Icons.directions),
-                                      label: const Text("Get Directions"),
-                                      style: ElevatedButton.styleFrom(
-                                        minimumSize: const Size.fromHeight(48),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            12,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: ElevatedButton.icon(
-                                      onPressed: _showListsModal,
-                                      icon: const Icon(Icons.bookmark_add),
-                                      label: const Text("Save Address"),
-                                      style: ElevatedButton.styleFrom(
-                                        minimumSize: const Size.fromHeight(48),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            12,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
+                          if (_searchResults.isNotEmpty)
+                            Container(
+                              margin:
+                              const EdgeInsets.only(top: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius:
+                                BorderRadius.circular(12),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black
+                                        .withOpacity(0.1),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
                                   ),
                                 ],
                               ),
-                            ],
+                              child: Column(
+                                children:
+                                _searchResults.map((place) {
+                                  return ListTile(
+                                    title: Text(
+                                      place['name'],
+                                      maxLines: 2,
+                                      overflow:
+                                      TextOverflow.ellipsis,
+                                    ),
+                                    subtitle: place['type'] != ''
+                                        ? Text(place['type'])
+                                        : null,
+                                    onTap: () =>
+                                        _selectPlace(place),
+                                  );
+                                }).toList(),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    ElevatedButton.icon(
+                      onPressed: _selectedPlace != null
+                          ? _openDirections
+                          : null,
+                      icon: const Icon(Icons.directions),
+                      label: const Text("Go"),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius:
+                          BorderRadius.circular(30),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          if (_selectedPlace != null &&
+              _selectedIndex == 0 &&
+              !_showDirectionsPanel &&
+              _showdetailpanel)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 10,
+                      offset: const Offset(0, -3),
+                    ),
+                  ],
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(16),
+                  ),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _selectedPlace!['name'],
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      "Lat: ${_selectedPlace!['lat'].toStringAsFixed(4)}, Lon: ${_selectedPlace!['lon'].toStringAsFixed(4)}",
+                      style:
+                      TextStyle(color: Colors.grey[600]),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: _openDirections,
+                            icon: const Icon(Icons.directions),
+                            label: const Text("Get Directions"),
+                            style: ElevatedButton.styleFrom(
+                              minimumSize:
+                              const Size.fromHeight(48),
+                              shape: RoundedRectangleBorder(
+                                borderRadius:
+                                BorderRadius.circular(12),
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                    if (_showDirectionsPanel)
-                      Positioned(
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        child: DirectionsPage(
-                          initialDestination: _selectedPlace,
-                          onClose: _hideDirectionsPanel,
-                          onRouteFound: (points, details) {
-                            setState(() {
-                              _showdetailpanel=false;
-                              _currentRoute = points;
-                              _currentRouteDetails = details;
-                            });
-                          },
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: _showListsModal,
+                            icon: const Icon(Icons.bookmark_add),
+                            label: const Text("Save Address"),
+                            style: ElevatedButton.styleFrom(
+                              minimumSize:
+                              const Size.fromHeight(48),
+                              shape: RoundedRectangleBorder(
+                                borderRadius:
+                                BorderRadius.circular(12),
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
+                    ),
                   ],
                 ),
               ),
-            ] else ...[
-              pages[_selectedIndex],
-            ],
-          ],
-        ),
+            ),
+          if (_showDirectionsPanel)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: DirectionsPage(
+                initialDestination: _selectedPlace,
+                onClose: _hideDirectionsPanel,
+                onRouteFound: (points, details) {
+                  setState(() {
+                    _showdetailpanel = false;
+                    _currentRoute = points;
+                    _currentRouteDetails = details;
+                  });
+                },
+              ),
+            ),
+        ],
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        currentIndex: _selectedIndex,
-        onTap: (index) {
-          if (!_hasToken! && index > 1) return;
-          setState(() {
-            _selectedIndex = index;
-            if (index != 0 && index != 1) {
-              _searchResults.clear();
-              _searchController.clear();
-              _searchFocusNode.unfocus();
-            }
-          });
-        },
-        selectedItemColor: Colors.purple,
-        unselectedItemColor: Colors.purple.shade200,
-        items: _hasToken!
-            ? const [
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.directions),
-                  label: "Directions",
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.explore),
-                  label: "Explore",
-                ),
-                BottomNavigationBarItem(icon: Icon(Icons.person), label: "You"),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.add_box),
-                  label: "Contribute",
-                ),
-              ]
-            : const [
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.directions),
-                  label: "Directions",
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.explore),
-                  label: "Explore",
-                ),
-              ],
-      ),
+          )
+      ] else ...[
+    pages[_selectedIndex],
+    ],
+      ],
+    ),
+    ),
+    ],
+    ),
+    ),
+    bottomNavigationBar: isTabletOrAbove ? null : navBar(false),
     );
   }
 }
