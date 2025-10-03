@@ -58,7 +58,7 @@ class LoginBoxState extends State<LoginBox> {
 
   final TextEditingController _loginEmailController = TextEditingController();
   final TextEditingController _loginPasswordController = TextEditingController();
-  final String backendUrl = 'http://0.0.0.0:3000';
+  final String backendUrl = 'http://10.0.2.2:3000';
   late SharedPreferences prefs;
 
   @override
@@ -92,9 +92,12 @@ class LoginBoxState extends State<LoginBox> {
       final data = json.decode(response.body);
 
       if (response.statusCode == 200) {
+        final userId = data['user']['id'];
         final token = data['token'];
+
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('jwt_token', token);
+        await prefs.setString('user_id', userId);
 
         Navigator.pushReplacement(
           context,
