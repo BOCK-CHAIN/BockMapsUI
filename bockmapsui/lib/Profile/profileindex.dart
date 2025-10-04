@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import '../SignupOrLogin/signup_or_login.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -41,7 +42,7 @@ class AccountPage extends StatelessWidget {
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(builder: (_) => const SignupOrLogin()),
-              (route) => false,
+          (route) => false,
         );
       }
     } catch (e) {
@@ -84,25 +85,22 @@ class AccountPage extends StatelessWidget {
                   const Text(
                     "You need to log in to view this.\nPlease login here.",
                     textAlign: TextAlign.center,
-                    style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                    ),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
                   ),
                   const SizedBox(height: 8),
                   ElevatedButton(
                     onPressed: () {
                       Navigator.pushAndRemoveUntil(
                         context,
-                        MaterialPageRoute(builder: (_) => const SignupOrLogin()),
-                            (route) => false,
+                        MaterialPageRoute(
+                          builder: (_) => const SignupOrLogin(),
+                        ),
+                        (route) => false,
                       );
                     },
                     child: const Text(
-                        "Go to Login",
-                      style: TextStyle(
-                        color: Color(0xFF914294)
-                      ),
+                      "Go to Login",
+                      style: TextStyle(color: Color(0xFF914294)),
                     ),
                   ),
                 ],
@@ -118,7 +116,7 @@ class AccountPage extends StatelessWidget {
               IconButton(
                 icon: const Icon(Icons.logout),
                 onPressed: () => _logout(context),
-              )
+              ),
             ],
           ),
           body: const AccountBody(),
@@ -140,9 +138,11 @@ class _AccountBodyState extends State<AccountBody> {
   bool isLoading = true;
   final TextEditingController emailController = TextEditingController();
   final String backendUrl = 'http://0.0.0.0:3000';
-  final TextEditingController currentPasswordController = TextEditingController();
+  final TextEditingController currentPasswordController =
+      TextEditingController();
   final TextEditingController newPasswordController = TextEditingController();
-  final TextEditingController confirmPasswordController = TextEditingController();
+  final TextEditingController confirmPasswordController =
+      TextEditingController();
   String passwordError = '';
 
   @override
@@ -206,7 +206,7 @@ class _AccountBodyState extends State<AccountBody> {
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),
                 child: const Text("OK"),
-              )
+              ),
             ],
           );
         },
@@ -221,7 +221,7 @@ class _AccountBodyState extends State<AccountBody> {
           url,
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': 'Bearer $token'
+            'Authorization': 'Bearer $token',
           },
           body: jsonEncode({'newEmail': email}),
         );
@@ -238,7 +238,7 @@ class _AccountBodyState extends State<AccountBody> {
                   TextButton(
                     onPressed: () => Navigator.of(context).pop(),
                     child: const Text("OK"),
-                  )
+                  ),
                 ],
               );
             },
@@ -258,7 +258,7 @@ class _AccountBodyState extends State<AccountBody> {
                   TextButton(
                     onPressed: () => Navigator.of(context).pop(),
                     child: const Text("OK"),
-                  )
+                  ),
                 ],
               );
             },
@@ -288,7 +288,7 @@ class _AccountBodyState extends State<AccountBody> {
         url,
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token'
+          'Authorization': 'Bearer $token',
         },
       );
 
@@ -299,15 +299,19 @@ class _AccountBodyState extends State<AccountBody> {
             builder: (context) {
               return AlertDialog(
                 title: const Text("Account Deleted"),
-                content: const Text("Your account has been permanently deleted."),
+                content: const Text(
+                  "Your account has been permanently deleted.",
+                ),
                 actions: [
                   TextButton(
                     onPressed: () {
                       Navigator.of(context).pop();
                       Navigator.pushAndRemoveUntil(
                         context,
-                        MaterialPageRoute(builder: (_) => const SignupOrLogin()),
-                            (route) => false,
+                        MaterialPageRoute(
+                          builder: (_) => const SignupOrLogin(),
+                        ),
+                        (route) => false,
                       );
                     },
                     child: const Text("OK"),
@@ -329,7 +333,7 @@ class _AccountBodyState extends State<AccountBody> {
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(),
                   child: const Text("OK"),
-                )
+                ),
               ],
             );
           },
@@ -362,7 +366,7 @@ class _AccountBodyState extends State<AccountBody> {
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),
                 child: const Text("OK"),
-              )
+              ),
             ],
           );
         },
@@ -378,7 +382,7 @@ class _AccountBodyState extends State<AccountBody> {
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),
                 child: const Text("OK"),
-              )
+              ),
             ],
           );
         },
@@ -393,11 +397,11 @@ class _AccountBodyState extends State<AccountBody> {
           url,
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': 'Bearer $token'
+            'Authorization': 'Bearer $token',
           },
           body: jsonEncode({
             'oldPassword': currentPasswordController.text,
-            'newPassword': newPasswordController.text
+            'newPassword': newPasswordController.text,
           }),
         );
 
@@ -422,7 +426,7 @@ class _AccountBodyState extends State<AccountBody> {
                       Navigator.of(context).pop();
                     },
                     child: const Text("OK"),
-                  )
+                  ),
                 ],
               );
             },
@@ -441,7 +445,7 @@ class _AccountBodyState extends State<AccountBody> {
                       Navigator.of(context).pop();
                     },
                     child: const Text("OK"),
-                  )
+                  ),
                 ],
               );
             },
@@ -514,8 +518,10 @@ class _AccountBodyState extends State<AccountBody> {
                       obscureText: true,
                       onChanged: (_) {
                         setModalState(() {
-                          passwordError = confirmPasswordController.text.isNotEmpty &&
-                              confirmPasswordController.text != newPasswordController.text
+                          passwordError =
+                              confirmPasswordController.text.isNotEmpty &&
+                                  confirmPasswordController.text !=
+                                      newPasswordController.text
                               ? "Passwords don't match"
                               : '';
                         });
@@ -539,9 +545,11 @@ class _AccountBodyState extends State<AccountBody> {
                       onChanged: (_) {
                         setModalState(() {
                           if (confirmPasswordController.text.isNotEmpty &&
-                              confirmPasswordController.text == newPasswordController.text) {
+                              confirmPasswordController.text ==
+                                  newPasswordController.text) {
                             passwordError = "match";
-                          } else if (confirmPasswordController.text != newPasswordController.text) {
+                          } else if (confirmPasswordController.text !=
+                              newPasswordController.text) {
                             passwordError = "Passwords don't match";
                           } else {
                             passwordError = '';
@@ -551,7 +559,9 @@ class _AccountBodyState extends State<AccountBody> {
                       decoration: InputDecoration(
                         labelText: "Confirm New Password",
                         hintText: "Re-enter your new password",
-                        errorText: passwordError == "Passwords don't match" ? passwordError : null,
+                        errorText: passwordError == "Passwords don't match"
+                            ? passwordError
+                            : null,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(6),
                         ),
@@ -614,6 +624,50 @@ class _AccountBodyState extends State<AccountBody> {
       },
     );
   }
+
+ Future<void> _generateApiKey() async {
+  // Show a loading SnackBar
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(content: Text("Generating API Key...")),
+  );
+
+  final userId = user!['id']; // <-- You already have this
+  final apiUrl = 'http://34.100.203.205:3000/api/generate-key';
+
+  try {
+    final response = await http.post(
+      Uri.parse(apiUrl),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'userId': userId}),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      final apiKey = data['apiKey'];
+
+      // Copy to clipboard
+      await Clipboard.setData(ClipboardData(text: apiKey));
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("API Key copied to clipboard:\n$apiKey"),
+          duration: const Duration(seconds: 5),
+        ),
+      );
+
+      // You can also store it locally (e.g., SharedPreferences) if needed
+      // await prefs.setString('apiKey', apiKey);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error: ${response.body}")),
+      );
+    }
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Failed to connect: $e")),
+    );
+  }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -683,7 +737,9 @@ class _AccountBodyState extends State<AccountBody> {
                             borderRadius: BorderRadius.circular(6),
                           ),
                           contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 12),
+                            horizontal: 12,
+                            vertical: 12,
+                          ),
                         ),
                       ),
                     ),
@@ -694,38 +750,30 @@ class _AccountBodyState extends State<AccountBody> {
           ),
           const SizedBox(height: 10),
           SizedBox(
-              width: double.infinity,
-              height: 40,
-              child: InkWell(
-                onTap: () {
-                  _updateEmail();
-                },
-                child: Container(
-                  width: double.infinity,
-                  padding: EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(8),
-                    color: Color(0xFFFFF3E0),
-                    border: Border.all(
-                      width: 2,
-                      color: Color(0xFF914294),
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.email, color: Color(0xFF914294)),
-                      SizedBox(width: 6),
-                      Text(
-                        "Change Email",
-                        style: TextStyle(
-                          fontSize: 16,
-                        ),
-                      )
-                    ],
-                  ),
+            width: double.infinity,
+            height: 40,
+            child: InkWell(
+              onTap: () {
+                _updateEmail();
+              },
+              child: Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  color: Color(0xFFFFF3E0),
+                  border: Border.all(width: 2, color: Color(0xFF914294)),
                 ),
-              )
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.email, color: Color(0xFF914294)),
+                    SizedBox(width: 6),
+                    Text("Change Email", style: TextStyle(fontSize: 16)),
+                  ],
+                ),
+              ),
+            ),
           ),
           const SizedBox(height: 32),
           Row(
@@ -773,25 +821,28 @@ class _AccountBodyState extends State<AccountBody> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.location_on,
-                            size: 20, color: Color(0xFF914294)),
+                        Icon(
+                          Icons.location_on,
+                          size: 20,
+                          color: Color(0xFF914294),
+                        ),
                         SizedBox(width: 8),
                         Container(
                           child: InkWell(
                             onTap: () {
                               Navigator.push(
                                 context,
-                                MaterialPageRoute(builder: (context) => LocationPage()),
+                                MaterialPageRoute(
+                                  builder: (context) => LocationPage(),
+                                ),
                               );
                             },
                             child: Text(
-                                "Location Access",
-                                style: TextStyle(
-                                  fontSize: 16
-                                ),
+                              "Location Access",
+                              style: TextStyle(fontSize: 16),
                             ),
                           ),
-                        )
+                        ),
                       ],
                     ),
                   ),
@@ -807,7 +858,9 @@ class _AccountBodyState extends State<AccountBody> {
                   onTap: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => NotificationsPage()),
+                      MaterialPageRoute(
+                        builder: (context) => NotificationsPage(),
+                      ),
                     );
                   },
                   child: Container(
@@ -822,8 +875,11 @@ class _AccountBodyState extends State<AccountBody> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: const [
-                        Icon(Icons.notifications,
-                            size: 20, color: Color(0xFF914294)),
+                        Icon(
+                          Icons.notifications,
+                          size: 20,
+                          color: Color(0xFF914294),
+                        ),
                         SizedBox(width: 8),
                         Text("Notifications", style: TextStyle(fontSize: 16)),
                       ],
@@ -849,8 +905,11 @@ class _AccountBodyState extends State<AccountBody> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: const [
-                        Icon(Icons.language,
-                            size: 20, color: Color(0xFF914294)),
+                        Icon(
+                          Icons.language,
+                          size: 20,
+                          color: Color(0xFF914294),
+                        ),
                         SizedBox(width: 8),
                         Text("Language", style: TextStyle(fontSize: 16)),
                       ],
@@ -880,8 +939,7 @@ class _AccountBodyState extends State<AccountBody> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: const [
-                        Icon(Icons.info,
-                            size: 20, color: Color(0xFF914294)),
+                        Icon(Icons.info, size: 20, color: Color(0xFF914294)),
                         SizedBox(width: 8),
                         Text("App Info", style: TextStyle(fontSize: 16)),
                       ],
@@ -907,8 +965,7 @@ class _AccountBodyState extends State<AccountBody> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: const [
-                        Icon(Icons.star,
-                            size: 20, color: Color(0xFF914294)),
+                        Icon(Icons.star, size: 20, color: Color(0xFF914294)),
                         SizedBox(width: 8),
                         Text("Rate the App", style: TextStyle(fontSize: 16)),
                       ],
@@ -918,7 +975,7 @@ class _AccountBodyState extends State<AccountBody> {
               ),
             ],
           ),
-          const SizedBox(height: 16,),
+          const SizedBox(height: 16),
           Row(
             children: [
               Expanded(
@@ -938,10 +995,16 @@ class _AccountBodyState extends State<AccountBody> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: const [
-                        Icon(Icons.description,
-                            size: 20, color: Color(0xFF914294)),
+                        Icon(
+                          Icons.description,
+                          size: 20,
+                          color: Color(0xFF914294),
+                        ),
                         SizedBox(width: 8),
-                        Text("Terms of Service", style: TextStyle(fontSize: 16)),
+                        Text(
+                          "Terms of Service",
+                          style: TextStyle(fontSize: 16),
+                        ),
                       ],
                     ),
                   ),
@@ -965,8 +1028,11 @@ class _AccountBodyState extends State<AccountBody> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: const [
-                        Icon(Icons.privacy_tip,
-                            size: 20, color: Color(0xFF914294)),
+                        Icon(
+                          Icons.privacy_tip,
+                          size: 20,
+                          color: Color(0xFF914294),
+                        ),
                         SizedBox(width: 8),
                         Text("Privacy Policy", style: TextStyle(fontSize: 16)),
                       ],
@@ -977,33 +1043,78 @@ class _AccountBodyState extends State<AccountBody> {
             ],
           ),
           const SizedBox(height: 16),
-          InkWell(
-            onTap: () {
-              openAppSettings();
-            },
-            borderRadius: BorderRadius.circular(8),
-            child: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: const Color(0xFF914294),
-                  width: 2,
+          Row(
+            children: [
+              // -------- Open App Settings --------
+              Expanded(
+                child: InkWell(
+                  onTap: () {
+                    openAppSettings();
+                  },
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: const Color(0xFF914294),
+                        width: 2,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: const [
+                        Icon(
+                          Icons.settings,
+                          size: 20,
+                          color: Color(0xFF914294),
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          "Open App Settings",
+                          style: TextStyle(fontSize: 16),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: const [
-                  Icon(Icons.settings, size: 20, color: Color(0xFF914294)),
-                  SizedBox(width: 8),
-                  Text(
-                    "Open App Settings",
-                    style: TextStyle(fontSize: 18),
+
+              const SizedBox(width: 8),
+
+              // -------- Generate API Key --------
+              Expanded(
+                child: InkWell(
+                  onTap: () {
+                    _generateApiKey(); // <-- We'll implement this function later
+                  },
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: const Color(0xFF914294),
+                        width: 2,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: const [
+                        Icon(Icons.vpn_key, size: 20, color: Color(0xFF914294)),
+                        SizedBox(width: 8),
+                        Text(
+                          "Generate API Key",
+                          style: TextStyle(fontSize: 16),
+                        ),
+                      ],
+                    ),
                   ),
-                ],
+                ),
               ),
-            ),
+            ],
           ),
+
           const SizedBox(height: 16),
           InkWell(
             onTap: () {
