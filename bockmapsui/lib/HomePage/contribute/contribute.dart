@@ -46,7 +46,7 @@ class _ContributePageState extends State<ContributePage> {
         return;
       }
 
-      const String apiUrl = 'http://10.0.2.2:3000/contribute/user-contributions';
+      const String apiUrl = 'http://0.0.0.0:3000/contribute/user-contributions';
       final response = await http.get(
         Uri.parse('$apiUrl?page=1&limit=20'),
         headers: {
