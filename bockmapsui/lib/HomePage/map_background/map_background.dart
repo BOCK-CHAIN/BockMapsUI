@@ -190,7 +190,7 @@ class _MapBackgroundState extends State<MapBackground> {
           children: [
             TileLayer(
               urlTemplate:
-                  'http://34.100.203.205:8080/styles/basic-preview/{z}/{x}/{y}.png',
+                  'http://34.100.203.205/styles/basic-preview/{z}/{x}/{y}.png?key=myfirstkey',
               userAgentPackageName: 'com.example.my_map_app',
             ),
 
