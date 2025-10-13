@@ -1,16 +1,98 @@
-# bockmapsui
+# 🗺️ BOCK Map App – Frontend
 
-A new Flutter project.
+This is the **main branch** for the Flutter frontend of the BOCK Map App, which displays maps and directions using data from OpenStreetMap.  
+It serves as the stable branch that consolidates the **web**, **iOS**, and **Android** branches.
 
-## Getting Started
+---
 
-This project is a starting point for a Flutter application.
+## 🌍 Overview
+The app allows users to:
 
-A few resources to get you started if this is your first Flutter project:
+- View maps from OpenStreetMap
+- Search for locations
+- Get directions and route planning
+- Save favorite locations
+- Explore nearby points of interest
+- Support for **Web**, **iOS**, and **Android** platforms
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+---
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## 🌐 Branch Overview
+| Branch   | Platform | Description |
+|----------|---------|-------------|
+| `main`   | All     | Stable release with tested features |
+| `build-web`    | Web     | Flutter Web build |
+| `build-ios`    | iOS     | Flutter iOS build |
+| `build-android`| Android | Flutter Android build |
+
+---
+
+## 🧩 Tech Stack
+- **Framework:** Flutter (Dart)  
+- **Map Provider:** OpenStreetMap Data (Our custom API)  
+- **Backend Connection:** REST APIs (Node.js / Express)  
+- **Storage:** Shared Preferences  
+
+---
+
+## 🧱 Folder Structure
+```
+lib/
+├── HomePage/
+├── Profile/
+├── SignupOrLogin/
+└── main.dart
+```
+
+# ⚙️ Setup Instructions
+
+## 1. Clone the repository
+```
+git clone https://github.com/<username>/<repo-name>.git
+cd frontend
+```
+
+## 2. Install dependencies
+```
+flutter pub get
+```
+
+## Setup .env file in root dir
+```
+BACKEND_URL=http://34.14.171.170:3000
+MAPTILESERVER_URL=http://34.14.133.235
+NOMINATIM_URL=http://34.14.171.170:8088
+OSRM_URL=http://34.14.171.170:5000
+```
+* replace with the hosted server url
+## 3. Run the app
+
+### Web
+```
+flutter run -d chrome
+```
+
+### Android
+```
+flutter run -d android
+```
+
+### iOS
+```
+flutter run -d ios
+```
+
+## 5. Build for production
+
+### Web
+```
+flutter build web
+```
+### Android
+```
+flutter build apk --release
+```
+### iOS
+```
+flutter build ios --release
+```
